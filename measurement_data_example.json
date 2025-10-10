@@ -1,0 +1,65 @@
+{
+    "section0_file_selection": {
+        "generate_lsz": true,
+        "generate_pp_time": true,
+        "generate_pp_pieces": false,
+        "generate_cfz": true
+    },
+    "section1_firma": {
+        "company": "BOSAL ČR s.r.o.",
+        "profession_name": "Operátor montážní linky",
+        "measurement_location": "Ostrava",
+        "workplace": "Montáž výfuků - linka 3",
+        "ico": "12345678",
+        "shift_pattern": "2 směnný",
+        "measurement_date": "10.10.2024",
+        "evidence_number": "001/2024"
+    },
+    "section2_additional_data": {
+        "set_standard": "120 ks/hodinu",
+        "product_type": "Výfukové systémy",
+        "work_performed": "stoj",
+        "workers_gender": "muži",
+        "work_plane_height": "80-120 cm",
+        "manual_load_min_kg": 2.5,
+        "manual_load_max_kg": 15.0
+    },
+    "section3_worker_a": {
+        "full_name": "Jan Novák",
+        "age_years": 35,
+        "exposure_length_years": 5,
+        "height_cm": 178,
+        "weight_kg": 82.0,
+        "laterality": "pravostranná",
+        "grip_strength_phk_n": 450.0,
+        "grip_strength_lhk_n": 420.0,
+        "emg_holter": "A",
+        "polar": "1",
+        "work_duration": "8 hodin",
+        "breaks": "2x 15 min, 1x 30 min",
+        "chest_strap_number": "H123",
+        "measurement_start": "06:00",
+        "code": "A001"
+    },
+    "section4_worker_b": {
+        "full_name": "Petr Svoboda",
+        "age_years": 28,
+        "exposure_length_years": 3,
+        "height_cm": 175,
+        "weight_kg": 75.0,
+        "laterality": "pravostranná",
+        "grip_strength_phk_n": 430.0,
+        "grip_strength_lhk_n": 410.0,
+        "emg_holter": "B",
+        "polar": "2",
+        "work_duration": "8 hodin",
+        "breaks": "2x 15 min, 1x 30 min",
+        "chest_strap_number": "H124",
+        "measurement_start": "06:00",
+        "code": "A002"
+    },
+    "section5_final": {
+        "measured_by": "Bc. Simona Lichá, Mgr. Daniela Petráková",
+        "notes": "Měření proběhlo bez komplikací. Pracovníci spolupracovali."
+    }
+}

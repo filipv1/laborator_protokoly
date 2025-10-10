@@ -1,16 +1,43 @@
 """
-GUI pro zadání údajů o měření - LABORATO5
+QWizardPage třídy pro jednotlivé sekce formuláře
 """
-import sys
 from PyQt6.QtWidgets import (
-    QApplication, QWizard, QWizardPage, QVBoxLayout, QFormLayout,
-    QLineEdit, QComboBox, QDateEdit, QSpinBox, QDoubleSpinBox,
-    QTextEdit
+    QWizardPage, QFormLayout, QVBoxLayout, QLineEdit, QComboBox,
+    QDateEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QCheckBox, QLabel
 )
 from PyQt6.QtCore import QDate
 
 
+class Page0_VyberSouboru(QWizardPage):
+    """Stránka 0: Výběr souborů k vygenerování"""
+
+    def __init__(self):
+        super().__init__()
+        self.setTitle("Výběr souborů k vygenerování")
+        self.setSubTitle("Vyberte, které Excel soubory chcete vygenerovat")
+
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        info_label = QLabel("Vyberte soubory ze složky 'Programy na vyhodnocování':")
+        layout.addWidget(info_label)
+        layout.addSpacing(10)
+
+        self.checkbox_lsz = QCheckBox("LSZ - Lokální svalová zátěž (LSZ_XX_firma_pozice.xlsm)")
+        self.checkbox_pp_cas = QCheckBox("PP - Pracovní polohy - ČAS (PP_XX_firma_pozice[ČAS].xlsx)")
+        self.checkbox_pp_kusy = QCheckBox("PP - Pracovní polohy - KUSY (PP_XX_firma_pozice[KUSY].xlsx)")
+        self.checkbox_cfz = QCheckBox("CFZ - Celková fyzická zátěž (CFZ_XX_firma_pozice.xlsx)")
+
+        layout.addWidget(self.checkbox_lsz)
+        layout.addWidget(self.checkbox_pp_cas)
+        layout.addWidget(self.checkbox_pp_kusy)
+        layout.addWidget(self.checkbox_cfz)
+        layout.addStretch()
+
+
 class Page1_Firma(QWizardPage):
+    """Stránka 1: Základní údaje o firmě"""
+
     def __init__(self):
         super().__init__()
         self.setTitle("Firma")
@@ -39,6 +66,8 @@ class Page1_Firma(QWizardPage):
 
 
 class Page2_DalsiUdaje(QWizardPage):
+    """Stránka 2: Další údaje o měření"""
+
     def __init__(self):
         super().__init__()
         self.setTitle("Další údaje")
@@ -72,6 +101,8 @@ class Page2_DalsiUdaje(QWizardPage):
 
 
 class Page3_PracovnikA(QWizardPage):
+    """Stránka 3: Údaje o pracovníkovi A"""
+
     def __init__(self):
         super().__init__()
         self.setTitle("Pracovník A")
@@ -126,6 +157,8 @@ class Page3_PracovnikA(QWizardPage):
 
 
 class Page4_PracovnikB(QWizardPage):
+    """Stránka 4: Údaje o pracovníkovi B (optional)"""
+
     def __init__(self):
         super().__init__()
         self.setTitle("Pracovník B (optional)")
@@ -180,6 +213,8 @@ class Page4_PracovnikB(QWizardPage):
 
 
 class Page5_Zaverecne(QWizardPage):
+    """Stránka 5: Závěrečné údaje"""
+
     def __init__(self):
         super().__init__()
         self.setTitle("Závěrečné údaje")
@@ -192,27 +227,3 @@ class Page5_Zaverecne(QWizardPage):
 
         layout.addRow("Měření provedl:", self.mereni_provedl)
         layout.addRow("Poznámky:", self.poznamky)
-
-
-class MeasurementGUI(QWizard):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Zadání údajů o měření")
-        self.setWizardStyle(QWizard.WizardStyle.ModernStyle)
-
-        self.addPage(Page1_Firma())
-        self.addPage(Page2_DalsiUdaje())
-        self.addPage(Page3_PracovnikA())
-        self.addPage(Page4_PracovnikB())
-        self.addPage(Page5_Zaverecne())
-
-
-def main():
-    app = QApplication(sys.argv)
-    window = MeasurementGUI()
-    window.show()
-    sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()
