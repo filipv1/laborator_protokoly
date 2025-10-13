@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, Any
 from .excel_filler import ExcelFiller
+from .table_copier import TableCopier
 from config import LSZ_MAPPING, PP_CAS_MAPPING, PP_KUSY_MAPPING, CFZ_MAPPING
 
 
@@ -34,13 +35,14 @@ class ProjectManager:
         project_folder = self._create_project_folder(project_data)
         copied_files = self._copy_excel_templates(project_folder, project_data)
         self._fill_excel_data(copied_files, project_data)
+        self._copy_time_schedule(copied_files, project_data)
 
         return project_folder
 
     def _create_project_folder(self, project_data: Dict[str, Any]) -> Path:
         """Vytvoří složku projektu podle evidenčního čísla a firmy"""
-        evidence_number = project_data["section1_firma"]["evidence_number"]
-        company = project_data["section1_firma"]["company"]
+        evidence_number = project_data["section2_firma"]["evidence_number"]
+        company = project_data["section2_firma"]["company"]
 
         folder_name = self._sanitize_folder_name(f"{evidence_number}_{company}")
         project_path = self.base_dir / folder_name
@@ -57,8 +59,8 @@ class ProjectManager:
             Dictionary: {"lsz": Path, "cfz": Path, ...} - zkopírované soubory
         """
         file_selection = project_data["section0_file_selection"]
-        evidence_number = project_data["section1_firma"]["evidence_number"]
-        company = project_data["section1_firma"]["company"]
+        evidence_number = project_data["section2_firma"]["evidence_number"]
+        company = project_data["section2_firma"]["company"]
 
         base_filename = self._sanitize_folder_name(f"{evidence_number}_{company}")
 
@@ -131,6 +133,30 @@ class ProjectManager:
             cfz_filler = ExcelFiller(CFZ_MAPPING)
             cfz_filler.fill_excel(copied_files["cfz"], project_data)
             print(f"CFZ Excel vyplněn: {copied_files['cfz'].name}")
+
+    def _copy_time_schedule(self, copied_files: Dict[str, Path], project_data: Dict[str, Any]) -> None:
+        """
+        Zkopíruje časový snímek do všech vygenerovaných Excel souborů.
+
+        Args:
+            copied_files: Dictionary se zkopírovanými soubory
+            project_data: Data z formuláře
+        """
+        # Získej data časového snímku
+        time_schedule = project_data.get("section1_uploaded_docx", {}).get("time_schedule", {})
+
+        if not time_schedule:
+            print("Varování: Časový snímek nebyl nalezen v datech")
+            return
+
+        # Vytvoř TableCopier
+        copier = TableCopier()
+
+        print("\nKopírování časového snímku do Excelů:")
+
+        # Zkopíruj do každého vygenerovaného souboru
+        for excel_type, excel_path in copied_files.items():
+            copier.copy_time_schedule(excel_path, excel_type, time_schedule)
 
     def _sanitize_folder_name(self, name: str) -> str:
         """Očistí název složky od nežádoucích znaků"""
