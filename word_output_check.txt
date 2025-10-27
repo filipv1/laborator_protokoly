@@ -1,0 +1,15 @@
+=== OBSAH VYGENEROVANEHO WORDU ===
+
+TEST - DVA ZDROJE DAT
+VSTUPNI DATA (input)
+Firma: BOSAL ČR s.r.o.
+ICO: 12345678
+Datum: 10.10.2024
+VYSLEDKOVA DATA (results)
+Fmax PHK Extenzor: 5.5 N
+Fmax PHK Flexor: 7.5 N
+Pocet pohybu PHK: 20000
+TABULKA SOMATOMETRIE
+Radek 1: Datum=00:00:00, Vek=100 let, Vyska=115 cm
+Radek 2: Datum=00:00:00, Vek=35 let, Vyska=150 cm
+Radek 3: Datum=0, Vek=68 let, Vyska=132.5 cm

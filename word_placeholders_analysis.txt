@@ -1,0 +1,16 @@
+Celkový počet unikátních placeholderů: 12
+
+Seznam všech placeholderů:
+==================================================
+1. {{section2_firma.address}}
+2. {{section2_firma.city_district}}
+3. {{section2_firma.city}}
+4. {{section2_firma.company}}
+5. {{section2_firma.house_number}}
+6. {{section2_firma.ico}}
+7. {{section2_firma.measurement_date}}
+8. {{section2_firma.postal_code}}
+9. {{section2_firma.profession_name}}
+10. {{section2_firma.workplace}}
+11. {{section4_worker_a.breaks}}
+12. {{section4_worker_a.work_duration}}

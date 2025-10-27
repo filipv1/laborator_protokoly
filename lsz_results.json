@@ -1,0 +1,808 @@
+{
+    "Fmax_Phk_Extenzor": 11,
+    "Fmax_Phk_Flexor": 14,
+    "phk_number_of_movements": 5500,
+    "Fmax_Lhk_Extenzor": 12.5,
+    "Fmax_Lhk_Flexor": 12.5,
+    "lhk_number_of_movements": 25000,
+    "table_W4_Y51": {
+        "1": {
+            "fmax": "Fmax",
+            "phk": "PHK",
+            "lhk": "LHK"
+        },
+        "2": {
+            "fmax": 7,
+            "phk": 27600,
+            "lhk": 27600
+        },
+        "3": {
+            "fmax": 8,
+            "phk": 24300,
+            "lhk": 24300
+        },
+        "4": {
+            "fmax": 9,
+            "phk": 21800,
+            "lhk": 21800
+        },
+        "5": {
+            "fmax": 10,
+            "phk": 19800,
+            "lhk": 19800
+        },
+        "6": {
+            "fmax": 11,
+            "phk": 18100,
+            "lhk": 18100
+        },
+        "7": {
+            "fmax": 12,
+            "phk": 16700,
+            "lhk": 16700
+        },
+        "8": {
+            "fmax": 13,
+            "phk": 15500,
+            "lhk": 15500
+        },
+        "9": {
+            "fmax": 14,
+            "phk": 14400,
+            "lhk": 14400
+        },
+        "10": {
+            "fmax": 15,
+            "phk": 13500,
+            "lhk": 13500
+        },
+        "11": {
+            "fmax": 16,
+            "phk": 12700,
+            "lhk": 12700
+        },
+        "12": {
+            "fmax": 17,
+            "phk": 12000,
+            "lhk": 12000
+        },
+        "13": {
+            "fmax": 18,
+            "phk": 11400,
+            "lhk": 11400
+        },
+        "14": {
+            "fmax": 19,
+            "phk": 10900,
+            "lhk": 10900
+        },
+        "15": {
+            "fmax": 20,
+            "phk": 10400,
+            "lhk": 10400
+        },
+        "16": {
+            "fmax": 21,
+            "phk": 10000,
+            "lhk": 10000
+        },
+        "17": {
+            "fmax": 22,
+            "phk": 9600,
+            "lhk": 9600
+        },
+        "18": {
+            "fmax": 23,
+            "phk": 9300,
+            "lhk": 9300
+        },
+        "19": {
+            "fmax": 24,
+            "phk": 9000,
+            "lhk": 9000
+        },
+        "20": {
+            "fmax": 25,
+            "phk": 8700,
+            "lhk": 8700
+        },
+        "21": {
+            "fmax": 26,
+            "phk": 8400,
+            "lhk": 8400
+        },
+        "22": {
+            "fmax": 27,
+            "phk": 8100,
+            "lhk": 8100
+        },
+        "23": {
+            "fmax": 28,
+            "phk": 7800,
+            "lhk": 7800
+        },
+        "24": {
+            "fmax": 29,
+            "phk": 7500,
+            "lhk": 7500
+        },
+        "25": {
+            "fmax": 30,
+            "phk": 7200,
+            "lhk": 7200
+        },
+        "26": {
+            "fmax": 31,
+            "phk": 6900,
+            "lhk": 6900
+        },
+        "27": {
+            "fmax": 32,
+            "phk": 6600,
+            "lhk": 6600
+        },
+        "28": {
+            "fmax": 33,
+            "phk": 6300,
+            "lhk": 6300
+        },
+        "29": {
+            "fmax": 34,
+            "phk": 6000,
+            "lhk": 6000
+        },
+        "30": {
+            "fmax": 35,
+            "phk": 5800,
+            "lhk": 5800
+        },
+        "31": {
+            "fmax": 36,
+            "phk": 5600,
+            "lhk": 5600
+        },
+        "32": {
+            "fmax": 37,
+            "phk": 5400,
+            "lhk": 5400
+        },
+        "33": {
+            "fmax": 38,
+            "phk": 5200,
+            "lhk": 5200
+        },
+        "34": {
+            "fmax": 39,
+            "phk": 5000,
+            "lhk": 5000
+        },
+        "35": {
+            "fmax": 40,
+            "phk": 4800,
+            "lhk": 4800
+        },
+        "36": {
+            "fmax": 41,
+            "phk": 4600,
+            "lhk": 4600
+        },
+        "37": {
+            "fmax": 42,
+            "phk": 4400,
+            "lhk": 4400
+        },
+        "38": {
+            "fmax": 43,
+            "phk": 4200,
+            "lhk": 4200
+        },
+        "39": {
+            "fmax": 44,
+            "phk": 4000,
+            "lhk": 4000
+        },
+        "40": {
+            "fmax": 45,
+            "phk": 3800,
+            "lhk": 3800
+        },
+        "41": {
+            "fmax": 46,
+            "phk": 3600,
+            "lhk": 3600
+        },
+        "42": {
+            "fmax": 47,
+            "phk": 3400,
+            "lhk": 3400
+        },
+        "43": {
+            "fmax": 48,
+            "phk": 3200,
+            "lhk": 3200
+        },
+        "44": {
+            "fmax": 49,
+            "phk": 3000,
+            "lhk": 3000
+        },
+        "45": {
+            "fmax": 50,
+            "phk": 2700,
+            "lhk": 2700
+        },
+        "46": {
+            "fmax": 51,
+            "phk": 2400,
+            "lhk": 2400
+        },
+        "47": {
+            "fmax": 52,
+            "phk": 2100,
+            "lhk": 2100
+        },
+        "48": {
+            "fmax": 53,
+            "phk": 1800,
+            "lhk": 1800
+        }
+    },
+    "table_B4_I21": {
+        "1": {
+            "activity": "Zakládání",
+            "time_min": 415,
+            "phk_extenzory": 2,
+            "phk_flexory": 5,
+            "lhk_extenzory": 6,
+            "lhk_flexory": 9
+        },
+        "2": {
+            "activity": "Bezpečnostní přestávka",
+            "time_min": 35,
+            "phk_extenzory": 2,
+            "phk_flexory": 4,
+            "lhk_extenzory": 4,
+            "lhk_flexory": 5
+        },
+        "3": {
+            "activity": "Přestávka na jídlo a oddech",
+            "time_min": 30,
+            "phk_extenzory": 0,
+            "phk_flexory": 0,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 0
+        },
+        "4": {
+            "activity": 0,
+            "time_min": 0,
+            "phk_extenzory": 0,
+            "phk_flexory": 0,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 0
+        },
+        "5": {
+            "activity": 0,
+            "time_min": 0,
+            "phk_extenzory": 0,
+            "phk_flexory": 0,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 0
+        },
+        "6": {
+            "activity": 0,
+            "time_min": 0,
+            "phk_extenzory": 0,
+            "phk_flexory": 0,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 0
+        },
+        "7": {
+            "activity": 0,
+            "time_min": 0,
+            "phk_extenzory": 0,
+            "phk_flexory": 0,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 0
+        },
+        "8": {
+            "activity": "1. měřená osoba ",
+            "time_min": 480,
+            "phk_extenzory": 0,
+            "phk_flexory": 0,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 0
+        },
+        "9": {
+            "activity": "Zakládání",
+            "time_min": 415,
+            "phk_extenzory": 3,
+            "phk_flexory": 3,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 3
+        },
+        "10": {
+            "activity": "Bezpečnostní přestávka",
+            "time_min": 35,
+            "phk_extenzory": 4,
+            "phk_flexory": 4,
+            "lhk_extenzory": 4,
+            "lhk_flexory": 0
+        },
+        "11": {
+            "activity": "Přestávka na jídlo a oddech",
+            "time_min": 30,
+            "phk_extenzory": 0,
+            "phk_flexory": 0,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 0
+        },
+        "12": {
+            "activity": 0,
+            "time_min": 0,
+            "phk_extenzory": 0,
+            "phk_flexory": 0,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 0
+        },
+        "13": {
+            "activity": 0,
+            "time_min": 0,
+            "phk_extenzory": 0,
+            "phk_flexory": 0,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 0
+        },
+        "14": {
+            "activity": 0,
+            "time_min": 0,
+            "phk_extenzory": 0,
+            "phk_flexory": 0,
+            "lhk_extenzory": 0,
+            "lhk_flexory": 0
+        },
+        "15": {
+            "activity": "2. měřená osoba",
+            "time_min": 480,
+            "phk_extenzory": 5,
+            "phk_flexory": 5,
+            "lhk_extenzory": 5,
+            "lhk_flexory": 0
+        }
+    },
+    "table_movements_per_unit": {
+        "1": {
+            "activity": "Zakládání",
+            "pieces": 179.97166666666666,
+            "time_min": 415,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 6,
+            "all_lhk": 6
+        },
+        "2": {
+            "activity": "Bezpečnostní přestávka",
+            "pieces": 0,
+            "time_min": 35,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 333,
+            "all_lhk": 0
+        },
+        "3": {
+            "activity": "Přestávka na jídlo a oddech",
+            "pieces": 0,
+            "time_min": 30,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "4": {
+            "activity": 0,
+            "pieces": 0,
+            "time_min": 0,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "5": {
+            "activity": 0,
+            "pieces": 0,
+            "time_min": 0,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "6": {
+            "activity": 0,
+            "pieces": 0,
+            "time_min": 0,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "7": {
+            "activity": "1. měřená osoba",
+            "pieces": 179.97166666666666,
+            "time_min": 480,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "8": {
+            "activity": "Zakládání",
+            "pieces": 179.97166666666666,
+            "time_min": 415,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "9": {
+            "activity": "Bezpečnostní přestávka",
+            "pieces": 0,
+            "time_min": 35,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "10": {
+            "activity": "Přestávka na jídlo a oddech",
+            "pieces": 0,
+            "time_min": 30,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "11": {
+            "activity": 0,
+            "pieces": 0,
+            "time_min": 0,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "12": {
+            "activity": 0,
+            "pieces": 0,
+            "time_min": 0,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "13": {
+            "activity": 0,
+            "pieces": 0,
+            "time_min": 0,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        },
+        "14": {
+            "activity": "2. měřená osoba",
+            "pieces": 179.97166666666666,
+            "time_min": 480,
+            "movements_per_unit_phk": 0,
+            "movements_per_unit_lhk": 0,
+            "all_phk": 0,
+            "all_lhk": 0
+        }
+    },
+    "table_time_weighted_average": {
+        "1": {
+            "date": "00:00:00",
+            "worker": "F. V.",
+            "phk_extenzory": 10,
+            "phk_flexory": 15,
+            "phk_movements": 2000,
+            "lhk_extenzory": 11,
+            "lhk_flexory": 12,
+            "lhk_movements": 20000
+        },
+        "2": {
+            "date": "00:00:00",
+            "worker": "S. S.",
+            "phk_extenzory": 12,
+            "phk_flexory": 13,
+            "phk_movements": 9000,
+            "lhk_extenzory": 14,
+            "lhk_flexory": 13,
+            "lhk_movements": 30000
+        },
+        "3": {
+            "date": "ø",
+            "worker": null,
+            "phk_extenzory": 11,
+            "phk_flexory": 14,
+            "phk_movements": 5500,
+            "lhk_extenzory": 12.5,
+            "lhk_flexory": 12.5,
+            "lhk_movements": 25000
+        },
+        "4": {
+            "date": "Hygienický limit pro celosměnový počet pohybů rukou a předloktí",
+            "worker": null,
+            "phk_extenzory": "(!!!Zapsat dle aktuálního snížení/zvýšení hyg. Limitu)",
+            "phk_flexory": "(!!!Zapsat dle aktuálního snížení/zvýšení hyg. Limitu)",
+            "phk_movements": "-",
+            "lhk_extenzory": "(!!!Zapsat dle aktuálního snížení/zvýšení hyg. Limitu)",
+            "lhk_flexory": "(!!!Zapsat dle aktuálního snížení/zvýšení hyg. Limitu)",
+            "lhk_movements": "-"
+        }
+    },
+    "table_force_distribution": {
+        "1": {
+            "activity": "1. měřená osoba",
+            "force_55_70_phk_extenzory": null,
+            "force_55_70_phk_flexory": null,
+            "force_55_70_lhk_extenzory": null,
+            "force_55_70_lhk_flexory": null,
+            "force_over_70_phk_extenzory": null,
+            "force_over_70_phk_flexory": null,
+            "force_over_70_lhk_extenzory": null,
+            "force_over_70_lhk_flexory": null
+        },
+        "2": {
+            "activity": "Zakládání",
+            "force_55_70_phk_extenzory": 30,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "3": {
+            "activity": "Bezpečnostní přestávka",
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "4": {
+            "activity": "Přestávka na jídlo a oddech",
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "5": {
+            "activity": 0,
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "6": {
+            "activity": 0,
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "7": {
+            "activity": "Celkem",
+            "force_55_70_phk_extenzory": 30,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "8": {
+            "activity": "2. měřená osoba",
+            "force_55_70_phk_extenzory": null,
+            "force_55_70_phk_flexory": null,
+            "force_55_70_lhk_extenzory": null,
+            "force_55_70_lhk_flexory": null,
+            "force_over_70_phk_extenzory": null,
+            "force_over_70_phk_flexory": null,
+            "force_over_70_lhk_extenzory": null,
+            "force_over_70_lhk_flexory": null
+        },
+        "9": {
+            "activity": "Zakládání",
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "10": {
+            "activity": "Bezpečnostní přestávka",
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "11": {
+            "activity": "Přestávka na jídlo a oddech",
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "12": {
+            "activity": 0,
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "13": {
+            "activity": 0,
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "14": {
+            "activity": "Celkem",
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "15": {
+            "activity": "Časově vážený průměr",
+            "force_55_70_phk_extenzory": null,
+            "force_55_70_phk_flexory": null,
+            "force_55_70_lhk_extenzory": null,
+            "force_55_70_lhk_flexory": null,
+            "force_over_70_phk_extenzory": null,
+            "force_over_70_phk_flexory": null,
+            "force_over_70_lhk_extenzory": null,
+            "force_over_70_lhk_flexory": null
+        },
+        "16": {
+            "activity": "Zakládání",
+            "force_55_70_phk_extenzory": 66,
+            "force_55_70_phk_flexory": 55,
+            "force_55_70_lhk_extenzory": 900,
+            "force_55_70_lhk_flexory": 99,
+            "force_over_70_phk_extenzory": 200,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "17": {
+            "activity": "Bezpečnostní přestávka",
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "18": {
+            "activity": "Přestávka na jídlo a oddech",
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "19": {
+            "activity": 0,
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "20": {
+            "activity": 0,
+            "force_55_70_phk_extenzory": 0,
+            "force_55_70_phk_flexory": 0,
+            "force_55_70_lhk_extenzory": 0,
+            "force_55_70_lhk_flexory": 0,
+            "force_over_70_phk_extenzory": 0,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        },
+        "21": {
+            "activity": "Celkem",
+            "force_55_70_phk_extenzory": 66,
+            "force_55_70_phk_flexory": 55,
+            "force_55_70_lhk_extenzory": 900,
+            "force_55_70_lhk_flexory": 99,
+            "force_over_70_phk_extenzory": 200,
+            "force_over_70_phk_flexory": 0,
+            "force_over_70_lhk_extenzory": 0,
+            "force_over_70_lhk_flexory": 0
+        }
+    },
+    "table_somatometrie": {
+        "3": {
+            "datum": "00:00:00",
+            "inicialy": "F. V.",
+            "lateralita": "pravostranná",
+            "vek_roky": 20,
+            "expozice_roky": 2,
+            "vyska_cm": 160,
+            "hmotnost_kg": 100
+        },
+        "4": {
+            "datum": "00:00:00",
+            "inicialy": "S. S.",
+            "lateralita": "pravostranná",
+            "vek_roky": 20,
+            "expozice_roky": 2,
+            "vyska_cm": 150,
+            "hmotnost_kg": 100
+        },
+        "5": {
+            "datum": 0,
+            "inicialy": "průměr",
+            "lateralita": null,
+            "vek_roky": 20,
+            "expozice_roky": 2,
+            "vyska_cm": 155,
+            "hmotnost_kg": 100
+        }
+    },
+    "charts": {
+        "graf1": "projects\\222_rentury\\lsz_charts\\graf1.png",
+        "graf2": "projects\\222_rentury\\lsz_charts\\graf2.png"
+    }
+}

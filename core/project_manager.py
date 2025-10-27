@@ -1,6 +1,7 @@
 """
 Project Manager - správa projektů a generování souborů
 """
+import json
 import shutil
 from pathlib import Path
 from typing import Dict, Any
@@ -36,6 +37,8 @@ class ProjectManager:
         copied_files = self._copy_excel_templates(project_folder, project_data)
         self._fill_excel_data(copied_files, project_data)
         self._copy_time_schedule(copied_files, project_data)
+        self._copy_uploaded_docx(project_folder, project_data)
+        self._save_measurement_json(project_folder, project_data)
 
         return project_folder
 
@@ -157,6 +160,54 @@ class ProjectManager:
         # Zkopíruj do každého vygenerovaného souboru
         for excel_type, excel_path in copied_files.items():
             copier.copy_time_schedule(excel_path, excel_type, time_schedule)
+
+    def _copy_uploaded_docx(self, project_folder: Path, project_data: Dict[str, Any]) -> None:
+        """
+        Zkopíruje nahraný Word z temp složky do project folderu.
+
+        Args:
+            project_folder: Cesta k project folderu
+            project_data: Data projektu (bude aktualizováno s novou cestou)
+        """
+        # Získej cestu k temp souboru
+        uploaded_file_path = project_data.get("section1_uploaded_docx", {}).get("uploaded_file_path")
+
+        if not uploaded_file_path or not Path(uploaded_file_path).exists():
+            print("Varování: Nahraný Word soubor nebyl nalezen")
+            return
+
+        # Vytvoř název podle evidence čísla a firmy
+        evidence_number = project_data["section2_firma"]["evidence_number"]
+        company = project_data["section2_firma"]["company"]
+        # Sanitizuj pouze basename (bez přípony), pak přidej .docx
+        basename = self._sanitize_folder_name(f"popis_prace_{evidence_number}_{company}")
+        filename = f"{basename}.docx"
+
+        # Cílová cesta
+        dest_path = project_folder / filename
+
+        # Zkopíruj
+        shutil.copy2(uploaded_file_path, dest_path)
+
+        # Aktualizuj JSON s ABSOLUTNÍ cestou k finálnímu souboru
+        project_data["section1_uploaded_docx"]["copied_file_path"] = str(dest_path.resolve())
+
+        print(f"Word dokument zkopírován: {dest_path.name}")
+
+    def _save_measurement_json(self, project_folder: Path, project_data: Dict[str, Any]) -> None:
+        """
+        Uloží measurement_data.json do project folderu.
+
+        Args:
+            project_folder: Cesta k project folderu
+            project_data: Data projektu k uložení
+        """
+        json_path = project_folder / "measurement_data.json"
+
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(project_data, f, ensure_ascii=False, indent=2)
+
+        print(f"JSON data uložena: {json_path.name}")
 
     def _sanitize_folder_name(self, name: str) -> str:
         """Očistí název složky od nežádoucích znaků"""

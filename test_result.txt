@@ -1,0 +1,2 @@
+HARDCODED: 48 rows (always 4-51)
+DYNAMIC: 15 rows (auto-detect, start=7)

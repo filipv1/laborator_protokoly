@@ -1,0 +1,100 @@
+{
+    "section0_file_selection": {
+        "generate_lsz": true,
+        "generate_pp_time": false,
+        "generate_pp_pieces": false,
+        "generate_cfz": false,
+        "measurement_days": 2
+    },
+    "section1_uploaded_docx": {
+        "docx_file_path": "C:/Users/vaclavik/Desktop/laborato5/Vzor popis práce 2024/POPIS PRÁCE A PRACOVIŠTĚ.docx",
+        "time_schedule": {
+            "line1": {
+                "number": "1.",
+                "operation": "Zakládání",
+                "time_min": 415,
+                "pieces_count": 180
+            },
+            "line2": {
+                "number": "2.",
+                "operation": "Bezpečnostní přestávka",
+                "time_min": 35,
+                "pieces_count": null
+            },
+            "line3": {
+                "number": "3.",
+                "operation": "Přestávka na jídlo a oddech",
+                "time_min": 30,
+                "pieces_count": null
+            },
+            "total": {
+                "time_min": 480,
+                "pieces_count": 180
+            }
+        }
+    },
+    "section2_firma": {
+        "company": "Testujicifirma",
+        "address": "Testujiciulice",
+        "conscription_number": "1234",
+        "zipcode": "123456",
+        "city": "TestujiciMesto",
+        "part_of_the_city": "TestujiciCastMesta",
+        "profession_name": "Testujiciprofese",
+        "measurement_location": "Testujicimistomereni",
+        "workplace": "Testujicipracovist",
+        "ico": "123456789",
+        "shift_pattern": "ranní",
+        "measurement_date": "10.02.2025",
+        "evidence_number": "66"
+    },
+    "section3_additional_data": {
+        "set_standard": "105",
+        "product_type": "auto",
+        "work_performed": "chůze",
+        "workers_gender": "muži",
+        "work_plane_height": "150",
+        "manual_load_min_kg": 10.0,
+        "manual_load_max_kg": 20.0
+    },
+    "section4_worker_a": {
+        "full_name": "Prvni Testujici",
+        "gender": "muž",
+        "age_years": 20,
+        "exposure_length_years": 2,
+        "height_cm": 181,
+        "weight_kg": 86.0,
+        "laterality": "pravostranná",
+        "grip_strength_phk_n": 100.0,
+        "grip_strength_lhk_n": 200.0,
+        "emg_holter": "C",
+        "polar": "1",
+        "work_duration": "480",
+        "breaks": "30",
+        "chest_strap_number": "",
+        "measurement_start": "",
+        "code": ""
+    },
+    "section5_worker_b": {
+        "full_name": "Druhy Testujici",
+        "gender": "muž",
+        "age_years": 30,
+        "exposure_length_years": 5,
+        "height_cm": 160,
+        "weight_kg": 100.0,
+        "laterality": "pravostranná",
+        "grip_strength_phk_n": 150.0,
+        "grip_strength_lhk_n": 160.0,
+        "emg_holter": "F",
+        "polar": "1",
+        "work_duration": "480",
+        "breaks": "30",
+        "chest_strap_number": "",
+        "measurement_start": "",
+        "code": ""
+    },
+    "section6_final": {
+        "measured_by": "MericiTestovac",
+        "notes": ""
+    }
+}

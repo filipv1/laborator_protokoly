@@ -3,12 +3,153 @@ QWizardPage třídy pro jednotlivé sekce formuláře
 """
 from PyQt6.QtWidgets import (
     QWizardPage, QFormLayout, QVBoxLayout, QHBoxLayout, QLineEdit, QComboBox,
-    QDateEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QCheckBox, QLabel,
+    QDateEdit, QTimeEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QCheckBox, QLabel,
     QPushButton, QFileDialog, QTableWidget, QTableWidgetItem, QHeaderView,
-    QMessageBox
+    QMessageBox, QRadioButton, QButtonGroup
 )
-from PyQt6.QtCore import QDate, Qt
-from core import DocxParser
+from PyQt6.QtCore import QDate, QTime, Qt
+from core import DocxParser, FileManager
+from core.text_generator import get_selected_holter_numbers, highlight_selected_holters
+import json
+from docxtpl import DocxTemplate, RichText
+
+
+class Page_InitialChoice(QWizardPage):
+    """Úvodní stránka: Výběr mezi Excel workflow a Word workflow"""
+
+    def __init__(self):
+        super().__init__()
+        self.setTitle("Vyberte typ operace")
+        self.setSubTitle("Co chcete vygenerovat?")
+
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        self.button_group = QButtonGroup(self)
+
+        self.radio_excel = QRadioButton("Vygenerovat Excely + JSON (původní workflow)")
+        self.radio_word = QRadioButton("Vygenerovat Word protokol z JSON")
+
+        self.button_group.addButton(self.radio_excel)
+        self.button_group.addButton(self.radio_word)
+
+        self.radio_excel.setChecked(True)
+
+        layout.addWidget(self.radio_excel)
+        layout.addWidget(self.radio_word)
+        layout.addStretch()
+
+    def nextId(self):
+        """Určí, na kterou stránku se má pokračovat"""
+        if self.radio_excel.isChecked():
+            return 1  # Page0_VyberSouboru
+        else:
+            return 8  # Page_WordGenerator
+
+
+class Page_WordGenerator(QWizardPage):
+    """Stránka pro generování Word protokolu z JSON"""
+
+    def __init__(self):
+        super().__init__()
+        self.setTitle("Generování Word protokolu")
+        self.setSubTitle("Vyberte JSON soubor s daty")
+
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        # File picker
+        file_layout = QHBoxLayout()
+        file_layout.addWidget(QLabel("JSON soubor:"))
+
+        self.file_path_edit = QLineEdit()
+        self.file_path_edit.setReadOnly(True)
+        file_layout.addWidget(self.file_path_edit)
+
+        self.browse_button = QPushButton("Procházet...")
+        self.browse_button.clicked.connect(self._browse_json)
+        file_layout.addWidget(self.browse_button)
+
+        layout.addLayout(file_layout)
+        layout.addStretch()
+
+        self.selected_json_path = None
+
+    def _browse_json(self):
+        """Otevře dialog pro výběr JSON souboru"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Vyberte JSON soubor",
+            "",
+            "JSON soubory (*.json);;Všechny soubory (*.*)"
+        )
+
+        if file_path:
+            self.selected_json_path = file_path
+            self.file_path_edit.setText(file_path)
+
+    def _add_purple_highlight(self, data):
+        """Rekurzivně obalí všechny hodnoty do RichText s fialovým pozadím"""
+        if isinstance(data, dict):
+            return {k: self._add_purple_highlight(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._add_purple_highlight(item) for item in data]
+        elif isinstance(data, str):
+            return RichText(data, highlight='violet')
+        elif isinstance(data, (int, float)):
+            return RichText(str(data), highlight='violet')
+        else:
+            return data
+
+    def validatePage(self):
+        """Validace a generování Word protokolu při kliknutí na Finish"""
+        if not self.selected_json_path:
+            QMessageBox.warning(self, "Chyba", "Vyberte JSON soubor!")
+            return False
+
+        try:
+            # Load JSON
+            with open(self.selected_json_path, encoding='utf-8') as f:
+                data = json.load(f)
+
+            # Add purple highlight
+            data_with_highlight = self._add_purple_highlight(data)
+
+            # Load Word template
+            template_path = r"Vzorové protokoly\Autorizované protokoly pro MUŽE\lsz_placeholdery_v2.docx"
+            doc = DocxTemplate(template_path)
+
+            # Render
+            doc.render(data_with_highlight)
+
+            # Save
+            output_path = "LSZ_vyplneny.docx"
+            doc.save(output_path)
+
+            # POST-PROCESSING: Zvýrazni vybrané holteru tučně
+            selected_holters = get_selected_holter_numbers(data)
+            if selected_holters:
+                highlight_selected_holters(output_path, selected_holters)
+
+            QMessageBox.information(
+                self,
+                "Úspěch",
+                f"Word protokol byl vygenerován:\n{output_path}"
+            )
+
+            return True
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Chyba",
+                f"Nepodařilo se vygenerovat Word protokol:\n{str(e)}"
+            )
+            return False
+
+    def nextId(self):
+        """Konec wizardu"""
+        return -1
 
 
 class Page0_VyberSouboru(QWizardPage):
@@ -147,11 +288,18 @@ class Page1_UploadDocx(QWizardPage):
         )
 
         if file_path:
-            self.selected_file_path = file_path
-            self.file_path_label.setText(f"📄 {file_path.split('/')[-1]}")
+            # 1. Zkopíruj Word do temp složky
+            file_manager = FileManager()
+            temp_path = file_manager.save_uploaded_docx(file_path)
+
+            # 2. Ulož absolutní cestu k temp souboru
+            self.selected_file_path = str(temp_path)
+
+            # 3. Update GUI
+            self.file_path_label.setText(f"📄 {temp_path.name}")
             self.file_path_label.setStyleSheet("color: green;")
 
-            # Automaticky načti data z Word dokumentu
+            # 4. Extrahuj tabulku (ZACHOVAT - parser může číst z originálního souboru)
             self._load_from_docx(file_path)
 
     def _load_from_docx(self, file_path: str):
@@ -299,24 +447,47 @@ class Page2_Firma(QWizardPage):
         self.setLayout(layout)
 
         self.firma = QLineEdit()
+        self.adresa = QLineEdit()
+        self.cislo_popisne = QLineEdit()
+        self.mesto = QLineEdit()
+        self.mestska_cast = QLineEdit()
+        self.psc = QLineEdit()
         self.nazev_profese = QLineEdit()
         self.misto_mereni = QLineEdit()
         self.pracoviste = QLineEdit()
         self.ico = QLineEdit()
-        self.smennost = QLineEdit()
+
+        self.smennost = QComboBox()
+        self.smennost.addItems(["jednosměnný", "dvousměnný", "třísměnný", "nepřetržitý"])
+
         self.datum_mereni = QDateEdit()
         self.datum_mereni.setDate(QDate.currentDate())
         self.datum_mereni.setCalendarPopup(True)
+
+        self.doba_mereni = QTimeEdit()
+        self.doba_mereni.setDisplayFormat("HH:mm:ss")
+        self.doba_mereni.setTime(QTime(0, 0, 0))
+
         self.evidencni_cislo = QLineEdit()
 
+        self.pocet_dni_mereni = QComboBox()
+        self.pocet_dni_mereni.addItems(["1", "2"])
+
         layout.addRow("Firma:", self.firma)
+        layout.addRow("Adresa:", self.adresa)
+        layout.addRow("Číslo popisné:", self.cislo_popisne)
+        layout.addRow("Město:", self.mesto)
+        layout.addRow("Městská část:", self.mestska_cast)
+        layout.addRow("PSČ:", self.psc)
         layout.addRow("Název Profese:", self.nazev_profese)
         layout.addRow("Místo měření:", self.misto_mereni)
         layout.addRow("Pracoviště:", self.pracoviste)
         layout.addRow("IČO:", self.ico)
         layout.addRow("Směnnost:", self.smennost)
         layout.addRow("Datum měření:", self.datum_mereni)
+        layout.addRow("Doba měření (hh:mm:ss):", self.doba_mereni)
         layout.addRow("Evidenční číslo:", self.evidencni_cislo)
+        layout.addRow("Počet dní měření:", self.pocet_dni_mereni)
 
 
 class Page3_DalsiUdaje(QWizardPage):
@@ -328,14 +499,11 @@ class Page3_DalsiUdaje(QWizardPage):
         layout = QFormLayout()
         self.setLayout(layout)
 
-        self.stanovena_norma = QLineEdit()
-        self.typ_vyrobku = QLineEdit()
-
         self.prace_vykonavana = QComboBox()
         self.prace_vykonavana.addItems(["stoj", "sed", "chůze"])
 
-        self.pohlavi_pracovniku = QComboBox()
-        self.pohlavi_pracovniku.addItems(["muži", "ženy"])
+        self.co_se_hodnoti = QComboBox()
+        self.co_se_hodnoti.addItems(["kusy", "čas"])
 
         self.vyska_pracovni_roviny = QLineEdit()
         self.hmotnost_min = QDoubleSpinBox()
@@ -345,10 +513,8 @@ class Page3_DalsiUdaje(QWizardPage):
         self.hmotnost_max.setMaximum(999.99)
         self.hmotnost_max.setSuffix(" kg")
 
-        layout.addRow("Stanovená norma:", self.stanovena_norma)
-        layout.addRow("Typ výrobku:", self.typ_vyrobku)
         layout.addRow("Práce je vykonávaná:", self.prace_vykonavana)
-        layout.addRow("Pohlaví pracovníků na měřené pozici:", self.pohlavi_pracovniku)
+        layout.addRow("Co se hodnotí:", self.co_se_hodnoti)
         layout.addRow("Výška pracovní roviny:", self.vyska_pracovni_roviny)
         layout.addRow("Hmotnost ručně zvedaných břemen (min):", self.hmotnost_min)
         layout.addRow("Hmotnost ručně zvedaných břemen (max):", self.hmotnost_max)
@@ -389,9 +555,17 @@ class Page4_PracovnikA(QWizardPage):
 
         self.doba_vykonu_a = QLineEdit()
         self.prestavky_a = QLineEdit()
+
+        # Nová číselná pole pro minuty
+        self.doba_vykonu_min_a = QSpinBox()
+        self.doba_vykonu_min_a.setMaximum(9999)
+        self.doba_vykonu_min_a.setSuffix(" min")
+
+        self.bezpecnostni_prestavka_min_a = QSpinBox()
+        self.bezpecnostni_prestavka_min_a.setMaximum(9999)
+        self.bezpecnostni_prestavka_min_a.setSuffix(" min")
+
         self.cislo_hrudniho_pasu_a = QLineEdit()
-        self.zacatek_mereni_a = QLineEdit()
-        self.kod_a = QLineEdit()
 
         layout.addRow("Jméno a příjmení:", self.jmeno_a)
         layout.addRow("Věk (let):", self.vek_a)
@@ -403,11 +577,11 @@ class Page4_PracovnikA(QWizardPage):
         layout.addRow("Síla stisku ruky LHK (N):", self.sila_lhk_a)
         layout.addRow("EMG Holter:", self.emg_holter_a)
         layout.addRow("Polar:", self.polar_a)
-        layout.addRow("Doba výkonu práce:", self.doba_vykonu_a)
-        layout.addRow("Přestávky:", self.prestavky_a)
+        layout.addRow("Směna (min):", self.doba_vykonu_a)
+        layout.addRow("Přestávka na jídlo a oddech (min):", self.prestavky_a)
+        layout.addRow("Doba výkonu práce (min):", self.doba_vykonu_min_a)
+        layout.addRow("Bezpečnostní přestávka (min):", self.bezpecnostni_prestavka_min_a)
         layout.addRow("Číslo hrudního pásu:", self.cislo_hrudniho_pasu_a)
-        layout.addRow("Začátek měření:", self.zacatek_mereni_a)
-        layout.addRow("Kód:", self.kod_a)
 
 
 class Page5_PracovnikB(QWizardPage):
@@ -443,11 +617,7 @@ class Page5_PracovnikB(QWizardPage):
         self.polar_b = QComboBox()
         self.polar_b.addItems(["1", "2", "3", "4", "5", "6", "7", "8"])
 
-        self.doba_vykonu_b = QLineEdit()
-        self.prestavky_b = QLineEdit()
         self.cislo_hrudniho_pasu_b = QLineEdit()
-        self.zacatek_mereni_b = QLineEdit()
-        self.kod_b = QLineEdit()
 
         layout.addRow("Jméno a příjmení:", self.jmeno_b)
         layout.addRow("Věk (let):", self.vek_b)
@@ -459,11 +629,7 @@ class Page5_PracovnikB(QWizardPage):
         layout.addRow("Síla stisku ruky LHK (N):", self.sila_lhk_b)
         layout.addRow("EMG Holter:", self.emg_holter_b)
         layout.addRow("Polar:", self.polar_b)
-        layout.addRow("Doba výkonu práce:", self.doba_vykonu_b)
-        layout.addRow("Přestávky:", self.prestavky_b)
         layout.addRow("Číslo hrudního pásu:", self.cislo_hrudniho_pasu_b)
-        layout.addRow("Začátek měření:", self.zacatek_mereni_b)
-        layout.addRow("Kód:", self.kod_b)
 
 
 class Page6_Zaverecne(QWizardPage):
@@ -476,8 +642,9 @@ class Page6_Zaverecne(QWizardPage):
         self.setLayout(layout)
 
         self.mereni_provedl = QLineEdit()
-        self.poznamky = QTextEdit()
-        self.poznamky.setMaximumHeight(100)
 
         layout.addRow("Měření provedl:", self.mereni_provedl)
-        layout.addRow("Poznámky:", self.poznamky)
+
+    def nextId(self):
+        """Konec wizardu pro Excel workflow"""
+        return -1
