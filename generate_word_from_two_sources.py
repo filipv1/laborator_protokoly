@@ -174,9 +174,12 @@ def insert_conditional_text_before_heading(docx_path, input_data, heading_text="
             if para.text.strip() in ["Norma", "ČAS"] and para.alignment == 1:
                 # Označ tento paragraph a následující k odstranění
                 paragraphs_to_remove.append(i)
-                # Odstraň i následující paragraph (text k nadpisu)
+                # Odstraň následující paragraph (text k nadpisu)
                 if i + 1 < len(doc.paragraphs):
                     paragraphs_to_remove.append(i + 1)
+                # Odstraň i prázdný řádek - ALE jen pokud je OPRAVDU prázdný!
+                if i + 2 < len(doc.paragraphs) and not doc.paragraphs[i + 2].text.strip():
+                    paragraphs_to_remove.append(i + 2)
                 print(f"  → Odstraňuji starý podmíněný text: {para.text.strip()}")
 
         # Odstraň paragraphs (od konce, aby se neposunuly indexy)
@@ -194,6 +197,9 @@ def insert_conditional_text_before_heading(docx_path, input_data, heading_text="
                 # Vlož text před hlavní nadpis (normální formát)
                 new_para = doc.paragraphs[i + 1].insert_paragraph_before(conditional_text)
                 new_para.alignment = 3  # 3 = JUSTIFY (oboustranné zarovnání)
+
+                # Vlož prázdný řádek (enter) za text
+                doc.paragraphs[i + 2].insert_paragraph_before("")
 
                 print(f"  ✓ Podmíněný text vložen před paragraph (typ: {what_is_evaluated.upper()})")
 
@@ -218,7 +224,7 @@ def insert_conditional_text_before_heading(docx_path, input_data, heading_text="
                         table_element = table._element
                         parent = table_element.getparent()
 
-                        # Vlož 2 nové paragrafy před tabulku
+                        # Vlož 3 nové paragrafy před tabulku
                         # 1. Nadpis (centrovaný)
                         new_heading_para = doc.add_paragraph(conditional_heading)
                         new_heading_para.alignment = 1  # CENTER
@@ -228,6 +234,10 @@ def insert_conditional_text_before_heading(docx_path, input_data, heading_text="
                         new_text_para = doc.add_paragraph(conditional_text)
                         new_text_para.alignment = 3  # JUSTIFY
                         parent.insert(parent.index(table_element), new_text_para._element)
+
+                        # 3. Prázdný řádek (enter)
+                        empty_para = doc.add_paragraph("")
+                        parent.insert(parent.index(table_element), empty_para._element)
 
                         print(f"  ✓ Podmíněný text vložen před tabulku #{table_idx} (typ: {what_is_evaluated.upper()})")
 
@@ -440,6 +450,10 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
     highlight_force_distribution_values(output_path, input_data, results_data)
     print(f"  ✓ Červené zvýraznění dokončeno")
 
+    # POST-PROCESSING: Odstraň prázdné řádky z tabulek (kde activity = "0")
+    print(f"  → Odstraňuji prázdné řádky z tabulek...")
+    remove_empty_activity_rows(output_path)
+
     # POZNÁMKA: Podmíněný text (požadavek 2) byl vložen PŘED načtením subdokumentu (viz výše)
 
     print(f"[OK] Word vygenerován (PLOCHÁ STRUKTURA): {output_path}")
@@ -535,6 +549,79 @@ def generate_word_protocol_v3(measurement_json, results_json, template_path, out
     print("  {{ m.section1_firma.company }}")
     print("  {{ r.Fmax_Phk_Extenzor }}")
     print("  {% for row in r.table_somatometrie %}")
+
+
+def remove_empty_activity_rows(docx_path):
+    """
+    Smaže řádky z tabulek, kde sloupec 'activity' (první sloupec) obsahuje "0" nebo je prázdný.
+
+    Identifikuje tabulky podle nadpisů NAD tabulkou:
+    - "Výsledky měřených osob – počet pohybů/jednotka:"
+    - "Výsledky měřených osob – síla % Fmax:"
+    - "Výsledky měřených osob – rozložení vynakládaných svalových sil ve směně:"
+
+    Args:
+        docx_path: Cesta k vygenerovanému Word dokumentu
+    """
+    doc = Document(docx_path)
+
+    # Klíčové nadpisy pro identifikaci tabulek
+    target_headings = [
+        "Výsledky měřených osob – počet pohybů/jednotka:",
+        "Výsledky měřených osob – síla % Fmax:",
+        "Výsledky měřených osob – rozložení vynakládaných svalových sil ve směně:"
+    ]
+
+    # Najdi tabulky následující po nadpisech
+    tables_to_clean = []
+
+    for para in doc.paragraphs:
+        para_text = para.text.strip()
+
+        # Check if paragraph obsahuje nějaký z klíčových nadpisů
+        for heading in target_headings:
+            if heading in para_text:
+                # Najdi následující tabulku pomocí XML elementů
+                para_element = para._element
+                parent = para_element.getparent()
+                para_position = parent.index(para_element)
+
+                # Hledej následující element typu table
+                for i in range(para_position + 1, len(parent)):
+                    next_element = parent[i]
+                    if next_element.tag.endswith('tbl'):  # Je to tabulka
+                        # Najdi tuto tabulku v doc.tables
+                        for table in doc.tables:
+                            if table._element == next_element:
+                                tables_to_clean.append(table)
+                                print(f"  → Nalezena tabulka pod nadpisem: {heading[:50]}...")
+                                break
+                        break
+                break
+
+    # Smaž prázdné řádky z identifikovaných tabulek
+    total_deleted = 0
+    for table in tables_to_clean:
+        deleted_count = 0
+        # Projdi řádky ODZADU (aby se neposunuly indexy při mazání)
+        for row_idx in range(len(table.rows) - 1, 0, -1):  # Skip row 0 (header)
+            first_cell = table.rows[row_idx].cells[0].text.strip()
+
+            # Pokud je activity "0" nebo prázdné → smaž řádek
+            if first_cell in ["0", "", "None"] or not first_cell:
+                table._element.remove(table.rows[row_idx]._element)
+                deleted_count += 1
+
+        if deleted_count > 0:
+            total_deleted += deleted_count
+            print(f"  ✓ Smazáno {deleted_count} prázdných řádků z tabulky")
+
+    if total_deleted > 0:
+        # Ulož dokument pouze pokud byly změny
+        doc.save(docx_path)
+        print(f"  ✓ Celkem smazáno {total_deleted} prázdných řádků z {len(tables_to_clean)} tabulek")
+    else:
+        print(f"  ⚠ Žádné prázdné řádky k odstranění")
 
 
 if __name__ == "__main__":

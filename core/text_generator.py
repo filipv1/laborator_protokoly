@@ -256,7 +256,7 @@ def _calculate_sesty_text_podminka(results_data: Dict[str, Any]) -> str:
         results_data: Data z lsz_results.json
 
     Returns:
-        "je" pokud jakákoliv hodnota force_over_70 > 100, jinak "není"
+        Celá věta o pravidelnosti vynakládání nadlimitních svalových sil
     """
     # Načti tabulku force_distribution, řádek 21 (Celkem)
     table = results_data.get("table_force_distribution", {})
@@ -264,7 +264,7 @@ def _calculate_sesty_text_podminka(results_data: Dict[str, Any]) -> str:
 
     # Pokud řádek neexistuje, fallback
     if not row:
-        return "není"
+        return "Vynakládání nadlimitních svalových sil není pravidelnou součástí výkonu prováděné práce."
 
     # Načti POUZE 4 hodnoty force_over_70 (nadlimitní síly nad 70%)
     values = [
@@ -279,9 +279,9 @@ def _calculate_sesty_text_podminka(results_data: Dict[str, Any]) -> str:
 
     # Pokud jakákoliv hodnota > 100
     if any(v > 100 for v in values):
-        return "je"
+        return "Vynakládání nadlimitních svalových sil je pravidelnou součástí výkonu prováděné práce."
     else:
-        return "není"
+        return "Vynakládání nadlimitních svalových sil není pravidelnou součástí výkonu prováděné práce."
 
 
 def _calculate_sedmy_text_podminka(measurement_data: Dict[str, Any], results_data: Dict[str, Any]) -> str:
@@ -307,14 +307,14 @@ def _calculate_sedmy_text_podminka(measurement_data: Dict[str, Any], results_dat
 
     # Pokud work_duration chybí, fallback
     if work_duration is None:
-        return "nepřekračuje u žádné z měřených svalových skupin rukou a předloktí daný hygienický limit."
+        return "Celosměnový počet těchto sil nepřekračuje u žádné z měřených svalových skupin rukou a předloktí daný hygienický limit."
 
     # Konvertuj na číslo (může být string z JSON)
     try:
         work_duration = float(work_duration)
     except (ValueError, TypeError):
         # Pokud konverze selže, fallback
-        return "nepřekračuje u žádné z měřených svalových skupin rukou a předloktí daný hygienický limit."
+        return "Celosměnový počet těchto sil nepřekračuje u žádné z měřených svalových skupin rukou a předloktí daný hygienický limit."
 
     # Vypočti limit podle vzorce: limit = (work_duration / 2) + 360
     limit = (work_duration / 2) + 360
@@ -325,7 +325,7 @@ def _calculate_sedmy_text_podminka(measurement_data: Dict[str, Any], results_dat
 
     # Pokud řádek neexistuje, fallback
     if not row:
-        return "nepřekračuje u žádné z měřených svalových skupin rukou a předloktí daný hygienický limit."
+        return "Celosměnový počet těchto sil nepřekračuje u žádné z měřených svalových skupin rukou a předloktí daný hygienický limit."
 
     # Načti 4 hodnoty force_55_70_* (velké svalové síly 55-70% Fmax)
     suma_55_70 = (
@@ -337,9 +337,9 @@ def _calculate_sedmy_text_podminka(measurement_data: Dict[str, Any], results_dat
 
     # Porovnej s limitem
     if suma_55_70 > limit:
-        return "překračuje u měřených svalových skupin rukou a předloktí daný hygienický limit."
+        return "Celosměnový počet těchto sil překračuje u měřených svalových skupin rukou a předloktí daný hygienický limit."
     else:
-        return "nepřekračuje u žádné z měřených svalových skupin rukou a předloktí daný hygienický limit."
+        return "Celosměnový počet těchto sil nepřekračuje u žádné z měřených svalových skupin rukou a předloktí daný hygienický limit."
 
 
 def _calculate_osmy_text_podminka(results_data: Dict[str, Any]) -> str:
@@ -490,6 +490,96 @@ def _calculate_devata_text_podminka(results_data: Dict[str, Any]) -> Dict[str, s
     return result
 
 
+def _get_shift_duration_text(work_duration_minutes: float) -> str:
+    """
+    Převede délku směny v minutách na slovní vyjádření v češtině.
+
+    Args:
+        work_duration_minutes: Délka směny v minutách (240-840)
+
+    Returns:
+        Slovní vyjádření ve tvaru "(osmihodinovou)" nebo "(sedmi a půl hodinovou)"
+    """
+    # Mapování minut → text (4h až 14h, po půlhodinových incrementech)
+    SHIFT_DURATION_MAP = {
+        240: "(čtyřhodinovou)",
+        270: "(čtyři a půl hodinovou)",
+        300: "(pětihodinovou)",
+        330: "(pět a půl hodinovou)",
+        360: "(šestihodinovou)",
+        390: "(šest a půl hodinovou)",
+        420: "(sedmihodinovou)",
+        450: "(sedmi a půl hodinovou)",
+        480: "(osmihodinovou)",
+        510: "(osmi a půl hodinovou)",
+        540: "(devítihodinovou)",
+        570: "(devíti a půl hodinovou)",
+        600: "(desetihodinovou)",
+        630: "(deseti a půl hodinovou)",
+        660: "(jedenáctihodinovou)",
+        690: "(jedenácti a půl hodinovou)",
+        720: "(dvanáctihodinovou)",
+        750: "(dvanácti a půl hodinovou)",
+        780: "(třináctihodinovou)",
+        810: "(třinácti a půl hodinovou)",
+        840: "(čtrnáctihodinovou)"
+    }
+
+    # Zaokrouhli na nejbližších 30 minut
+    rounded_minutes = round(work_duration_minutes / 30) * 30
+
+    # Vrať text nebo fallback
+    return SHIFT_DURATION_MAP.get(int(rounded_minutes), "(osmihodinovou)")
+
+
+def _calculate_hygiene_limits(results_data: Dict[str, Any]) -> Dict[str, int]:
+    """
+    Vypočítá hygienické limity pro všechny 4 Fmax hodnoty z table_W4_Y51.
+
+    Args:
+        results_data: Data z lsz_results.json
+
+    Returns:
+        Dictionary s limity: {"phk_extenzor": 12500, "phk_flexor": 13000, ...}
+    """
+    table = results_data.get("table_W4_Y51", {})
+    result = {}
+
+    # PHK Extenzory
+    fmax_phk_ext = results_data.get("Fmax_Phk_Extenzor")
+    if fmax_phk_ext is not None:
+        fmax_rounded = _math_round(fmax_phk_ext)
+        row = _find_in_table_W4_Y51(table, fmax_rounded)
+        if row is not None:
+            result["phk_extenzor"] = row.get("phk", 0)
+
+    # PHK Flexory
+    fmax_phk_flex = results_data.get("Fmax_Phk_Flexor")
+    if fmax_phk_flex is not None:
+        fmax_rounded = _math_round(fmax_phk_flex)
+        row = _find_in_table_W4_Y51(table, fmax_rounded)
+        if row is not None:
+            result["phk_flexor"] = row.get("phk", 0)
+
+    # LHK Extenzory
+    fmax_lhk_ext = results_data.get("Fmax_Lhk_Extenzor")
+    if fmax_lhk_ext is not None:
+        fmax_rounded = _math_round(fmax_lhk_ext)
+        row = _find_in_table_W4_Y51(table, fmax_rounded)
+        if row is not None:
+            result["lhk_extenzor"] = row.get("lhk", 0)
+
+    # LHK Flexory
+    fmax_lhk_flex = results_data.get("Fmax_Lhk_Flexor")
+    if fmax_lhk_flex is not None:
+        fmax_rounded = _math_round(fmax_lhk_flex)
+        row = _find_in_table_W4_Y51(table, fmax_rounded)
+        if row is not None:
+            result["lhk_flexor"] = row.get("lhk", 0)
+
+    return result
+
+
 def generate_conditional_texts(measurement_data: Dict[str, Any], results_data: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
     """
     Vygeneruje podmínkové texty na základě dat z measurement_data.json a results_data.
@@ -553,6 +643,41 @@ def generate_conditional_texts(measurement_data: Dict[str, Any], results_data: O
     # PODMÍNKA 9: Tabulka hygienických limitů (Nad limitem / Pod limitem pro všechny 4 svalové skupiny)
     if results_data is not None:
         texts["devata_text_podminka"] = _calculate_devata_text_podminka(results_data)
+
+    # HYGIENICKÉ LIMITY: Číselné hodnoty limitů z table_W4_Y51
+    if results_data is not None:
+        texts["hygiene_limits"] = _calculate_hygiene_limits(results_data)
+
+    # HYGIENICKÝ LIMIT PRO 55-70% FMAX: Vypočítané číslo podle délky směny
+    work_duration = measurement_data.get("section4_worker_a", {}).get("work_duration")
+    if work_duration is not None:
+        try:
+            work_duration = float(work_duration)
+            texts["hygiene_limit_55_70"] = int((work_duration / 2) + 360)
+            texts["shift_duration_text"] = _get_shift_duration_text(work_duration)
+        except (ValueError, TypeError):
+            texts["hygiene_limit_55_70"] = 600  # Fallback pro 8h směnu
+            texts["shift_duration_text"] = "(osmihodinovou)"
+    else:
+        texts["hygiene_limit_55_70"] = 600  # Fallback pro 8h směnu
+        texts["shift_duration_text"] = "(osmihodinovou)"
+
+    # PODMÍNĚNÉ PLACEHOLDERY: Vypíší text pouze pokud je překročení
+    # Sesty text - pokud DOCHÁZÍ k pravidelným nadlimitním silám (> 100)
+    if results_data is not None:
+        sesty = texts.get("sesty_text_podminka", "")
+        if "je pravidelnou součástí" in sesty:
+            texts["sesty_text_if_true"] = texts["sesty_text_podminka"]
+        else:
+            texts["sesty_text_if_true"] = ""
+
+    # Sedmy text - pokud PŘEKRAČUJE limit pro 55-70% Fmax
+    if results_data is not None:
+        sedmy = texts.get("sedmy_text_podminka", "")
+        if "překračuje" in sedmy and "nepřekračuje" not in sedmy:
+            texts["sedmy_text_if_true"] = texts["sedmy_text_podminka"]
+        else:
+            texts["sedmy_text_if_true"] = ""
 
     return texts
 
