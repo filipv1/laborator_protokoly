@@ -562,6 +562,10 @@ class Page2_Firma(QWizardPage):
         self.datum_mereni.setDate(QDate.currentDate())
         self.datum_mereni.setCalendarPopup(True)
 
+        self.doba_mereni = QTimeEdit()
+        self.doba_mereni.setTime(QTime(8, 0))  # Default 08:00:00
+        self.doba_mereni.setDisplayFormat("HH:mm:ss")
+
         self.evidencni_cislo = QLineEdit()
 
         self.pocet_dni_mereni = QComboBox()
@@ -584,6 +588,7 @@ class Page2_Firma(QWizardPage):
 
         layout.addRow("Směnnost:", self.smennost)
         layout.addRow("Datum měření:", self.datum_mereni)
+        layout.addRow("Délka měření:", self.doba_mereni)
         layout.addRow("Evidenční číslo:", self.evidencni_cislo)
         layout.addRow("Počet dní měření:", self.pocet_dni_mereni)
 

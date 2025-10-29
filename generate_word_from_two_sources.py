@@ -167,6 +167,23 @@ def insert_conditional_text_before_heading(docx_path, input_data, heading_text="
         # Otevři dokument pomocí python-docx
         doc = Document(docx_path)
 
+        # KROK 0: Nejdřív odstraň všechny existující podmíněné texty (prevence duplicit při opakovaném generování)
+        paragraphs_to_remove = []
+        for i, para in enumerate(doc.paragraphs):
+            # Hledej nadpisy "Norma" nebo "ČAS" (centrované)
+            if para.text.strip() in ["Norma", "ČAS"] and para.alignment == 1:
+                # Označ tento paragraph a následující k odstranění
+                paragraphs_to_remove.append(i)
+                # Odstraň i následující paragraph (text k nadpisu)
+                if i + 1 < len(doc.paragraphs):
+                    paragraphs_to_remove.append(i + 1)
+                print(f"  → Odstraňuji starý podmíněný text: {para.text.strip()}")
+
+        # Odstraň paragraphs (od konce, aby se neposunuly indexy)
+        for idx in sorted(paragraphs_to_remove, reverse=True):
+            p = doc.paragraphs[idx]
+            p._element.getparent().remove(p._element)
+
         # KROK 1: Hledej v normálních paragrafech
         for i, paragraph in enumerate(doc.paragraphs):
             if heading_text in paragraph.text:
@@ -187,7 +204,12 @@ def insert_conditional_text_before_heading(docx_path, input_data, heading_text="
         # KROK 2: Pokud nenalezen v paragrafech, hledej v tabulkách
         print(f"  → Nadpis nenalezen v paragrafech, hledám v tabulkách...")
 
+        processed_tables = set()  # Track už zpracovaných tabulek (prevence duplicit kvůli merged cells)
+
         for table_idx, table in enumerate(doc.tables):
+            if table_idx in processed_tables:
+                continue  # Skip, už jsme zpracovali
+
             for row_idx, row in enumerate(table.rows):
                 for cell in row.cells:
                     if heading_text in cell.text:
@@ -208,6 +230,9 @@ def insert_conditional_text_before_heading(docx_path, input_data, heading_text="
                         parent.insert(parent.index(table_element), new_text_para._element)
 
                         print(f"  ✓ Podmíněný text vložen před tabulku #{table_idx} (typ: {what_is_evaluated.upper()})")
+
+                        # Mark table as processed
+                        processed_tables.add(table_idx)
 
                         # Ulož dokument
                         doc.save(docx_path)

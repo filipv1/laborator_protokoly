@@ -95,6 +95,7 @@ class MeasurementGUI(QWizard):
                 "ico": self.page2.ico.text(),
                 "shift_pattern": self.page2.smennost.currentText(),
                 "measurement_date": self.page2.datum_mereni.date().toString("dd.MM.yyyy"),
+                "measurement_duration": self.page2.doba_mereni.time().toString("HH:mm:ss"),
                 "evidence_number": self.page2.evidencni_cislo.text(),
                 "measurement_days": int(self.page2.pocet_dni_mereni.currentText())
             },
