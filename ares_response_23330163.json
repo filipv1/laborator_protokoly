@@ -1,0 +1,138 @@
+{
+    "ico": "23330163",
+    "obchodniJmeno": "Filip Václavík",
+    "sidlo": {
+        "kodStatu": "CZ",
+        "nazevStatu": "Česká republika",
+        "kodKraje": 19,
+        "nazevKraje": "Hlavní město Praha",
+        "kodObce": 554782,
+        "nazevObce": "Praha",
+        "kodSpravnihoObvodu": 108,
+        "nazevSpravnihoObvodu": "Praha 10",
+        "kodMestskehoObvodu": 108,
+        "nazevMestskehoObvodu": "Praha 10",
+        "kodMestskeCastiObvodu": 538205,
+        "kodUlice": 774286,
+        "nazevMestskeCastiObvodu": "Praha-Dubeč",
+        "nazevUlice": "Winklerova",
+        "cisloDomovni": 1667,
+        "kodCastiObce": 33332,
+        "nazevCastiObce": "Dubeč",
+        "kodAdresnihoMista": 26663473,
+        "psc": 10700,
+        "textovaAdresa": "Winklerova 1667, Dubeč, 10700 Praha 10",
+        "standardizaceAdresy": true,
+        "typCisloDomovni": 1
+    },
+    "pravniForma": "101",
+    "financniUrad": "010",
+    "datumVzniku": "2025-05-27",
+    "datumAktualizace": "2025-06-18",
+    "icoId": "23330163",
+    "adresaDorucovaci": {
+        "radekAdresy1": "Winklerova 1667",
+        "radekAdresy2": "Dubeč",
+        "radekAdresy3": "10700 Praha 10"
+    },
+    "seznamRegistraci": {
+        "stavZdrojeVr": "NEEXISTUJICI",
+        "stavZdrojeRes": "AKTIVNI",
+        "stavZdrojeRzp": "AKTIVNI",
+        "stavZdrojeNrpzs": "NEEXISTUJICI",
+        "stavZdrojeRpsh": "NEEXISTUJICI",
+        "stavZdrojeRcns": "NEEXISTUJICI",
+        "stavZdrojeSzr": "NEEXISTUJICI",
+        "stavZdrojeDph": "NEEXISTUJICI",
+        "stavZdrojeSd": "NEEXISTUJICI",
+        "stavZdrojeIr": "NEEXISTUJICI",
+        "stavZdrojeCeu": "NEEXISTUJICI",
+        "stavZdrojeRs": "NEEXISTUJICI",
+        "stavZdrojeRed": "NEEXISTUJICI",
+        "stavZdrojeMonitor": "NEEXISTUJICI"
+    },
+    "primarniZdroj": "rzp",
+    "dalsiUdaje": [
+        {
+            "obchodniJmeno": [
+                {
+                    "obchodniJmeno": "Filip Václavík",
+                    "primarniZaznam": true
+                }
+            ],
+            "sidlo": [
+                {
+                    "sidlo": {
+                        "kodStatu": "CZ",
+                        "nazevStatu": "Česká republika",
+                        "kodKraje": 19,
+                        "nazevKraje": "Hlavní město Praha",
+                        "kodObce": 554782,
+                        "nazevObce": "Praha",
+                        "kodSpravnihoObvodu": 159,
+                        "nazevSpravnihoObvodu": "Praha 15",
+                        "kodMestskehoObvodu": 108,
+                        "nazevMestskehoObvodu": "Praha 10",
+                        "kodMestskeCastiObvodu": 538205,
+                        "kodUlice": 774286,
+                        "nazevMestskeCastiObvodu": "Praha-Dubeč",
+                        "nazevUlice": "Winklerova",
+                        "cisloDomovni": 1667,
+                        "kodCastiObce": 33332,
+                        "nazevCastiObce": "Dubeč",
+                        "kodAdresnihoMista": 26663473,
+                        "psc": 10700,
+                        "textovaAdresa": "Winklerova 1667, Dubeč, 10700 Praha 10",
+                        "standardizaceAdresy": true,
+                        "typCisloDomovni": 1
+                    },
+                    "primarniZaznam": true
+                }
+            ],
+            "pravniForma": "101",
+            "datovyZdroj": "res"
+        },
+        {
+            "obchodniJmeno": [
+                {
+                    "obchodniJmeno": "Filip Václavík",
+                    "primarniZaznam": true
+                }
+            ],
+            "sidlo": [
+                {
+                    "sidlo": {
+                        "kodStatu": "CZ",
+                        "nazevStatu": "Česká republika",
+                        "kodKraje": 19,
+                        "nazevKraje": "Hlavní město Praha",
+                        "kodObce": 554782,
+                        "nazevObce": "Praha",
+                        "kodSpravnihoObvodu": 108,
+                        "nazevSpravnihoObvodu": "Praha 10",
+                        "kodMestskehoObvodu": 108,
+                        "nazevMestskehoObvodu": "Praha 10",
+                        "kodMestskeCastiObvodu": 538205,
+                        "kodUlice": 774286,
+                        "nazevMestskeCastiObvodu": "Praha-Dubeč",
+                        "nazevUlice": "Winklerova",
+                        "cisloDomovni": 1667,
+                        "kodCastiObce": 33332,
+                        "nazevCastiObce": "Dubeč",
+                        "kodAdresnihoMista": 26663473,
+                        "psc": 10700,
+                        "textovaAdresa": "Winklerova 1667, Dubeč, 10700 Praha 10",
+                        "standardizaceAdresy": true,
+                        "typCisloDomovni": 1
+                    },
+                    "primarniZaznam": true
+                }
+            ],
+            "pravniForma": "101",
+            "datovyZdroj": "rzp"
+        }
+    ],
+    "czNace": [
+        "620"
+    ]
+}

@@ -91,21 +91,16 @@ class MeasurementGUI(QWizard):
                 "city_district": self.page2.mestska_cast.text(),
                 "postal_code": self.page2.psc.text(),
                 "profession_name": self.page2.nazev_profese.text(),
-                "measurement_location": self.page2.misto_mereni.text(),
                 "workplace": self.page2.pracoviste.text(),
                 "ico": self.page2.ico.text(),
                 "shift_pattern": self.page2.smennost.currentText(),
                 "measurement_date": self.page2.datum_mereni.date().toString("dd.MM.yyyy"),
-                "measurement_duration": self.page2.doba_mereni.time().toString("HH:mm:ss"),
                 "evidence_number": self.page2.evidencni_cislo.text(),
                 "measurement_days": int(self.page2.pocet_dni_mereni.currentText())
             },
             "section3_additional_data": {
                 "work_performed": self.page3.prace_vykonavana.currentText(),
-                "what_is_evaluated": self.page3.co_se_hodnoti.currentText(),
-                "work_plane_height": self.page3.vyska_pracovni_roviny.text(),
-                "manual_load_min_kg": self.page3.hmotnost_min.value(),
-                "manual_load_max_kg": self.page3.hmotnost_max.value()
+                "what_is_evaluated": self.page3.co_se_hodnoti.currentText()
             },
             "section4_worker_a": {
                 "full_name": self.page4.jmeno_a.text(),

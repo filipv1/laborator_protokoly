@@ -5,3 +5,4 @@ docxtpl>=0.16.0
 xlwings>=0.30.0
 Pillow>=10.0.0
 pywin32>=305
+requests>=2.31.0

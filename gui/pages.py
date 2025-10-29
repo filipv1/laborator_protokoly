@@ -12,7 +12,101 @@ from core import DocxParser, FileManager
 from core.text_generator import get_selected_holter_numbers, highlight_selected_holters
 import json
 from docxtpl import DocxTemplate, RichText
+import requests
 
+
+# ============================================================================
+# ARES API Helper Functions
+# ============================================================================
+
+def fetch_ares_data(ico: str) -> dict:
+    """
+    Načte data z ARES API podle IČO.
+
+    Args:
+        ico: IČO firmy (string nebo int)
+
+    Returns:
+        dict: JSON odpověď z ARES API, nebo None pokud se načtení nezdařilo
+    """
+    # Odstraň mezery a nealfanumerické znaky z IČO
+    ico_clean = ''.join(filter(str.isdigit, str(ico)))
+
+    if not ico_clean:
+        return None
+
+    url = f"https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/{ico_clean}"
+
+    try:
+        response = requests.get(url, timeout=10)
+
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 404:
+            return None
+        else:
+            return None
+
+    except requests.exceptions.Timeout:
+        return None
+    except requests.exceptions.RequestException:
+        return None
+    except Exception:
+        return None
+
+
+def extract_company_data_from_ares(ares_response: dict) -> dict:
+    """
+    Extrahuje relevantní data z ARES API odpovědi a mapuje je na naše pole.
+
+    Args:
+        ares_response: JSON odpověď z ARES API
+
+    Returns:
+        dict: Slovník s klíči odpovídajícími našim polím (company, address, atd.)
+    """
+    if not ares_response:
+        return {}
+
+    result = {}
+
+    # Obchodní jméno
+    result['company'] = ares_response.get('obchodniJmeno', '')
+
+    # Adresa z objektu "sidlo"
+    sidlo = ares_response.get('sidlo', {})
+
+    if sidlo:
+        # Název ulice
+        result['address'] = sidlo.get('nazevUlice', '')
+
+        # Číslo popisné/orientační (formát: "1307/2")
+        cislo_domovni = sidlo.get('cisloDomovni')
+        cislo_orientacni = sidlo.get('cisloOrientacni')
+
+        if cislo_domovni and cislo_orientacni:
+            result['house_number'] = f"{cislo_domovni}/{cislo_orientacni}"
+        elif cislo_domovni:
+            result['house_number'] = str(cislo_domovni)
+        else:
+            result['house_number'] = ''
+
+        # Město
+        result['city'] = sidlo.get('nazevObce', '')
+
+        # Městská část (používáme nazevMestskeCastiObvodu nebo nazevCastiObce)
+        result['city_district'] = sidlo.get('nazevMestskeCastiObvodu') or sidlo.get('nazevCastiObce', '')
+
+        # PSČ
+        psc = sidlo.get('psc')
+        result['postal_code'] = str(psc) if psc else ''
+
+    return result
+
+
+# ============================================================================
+# Wizard Pages
+# ============================================================================
 
 class Page_InitialChoice(QWizardPage):
     """Úvodní stránka: Výběr mezi Excel workflow a Word workflow"""
@@ -453,9 +547,13 @@ class Page2_Firma(QWizardPage):
         self.mestska_cast = QLineEdit()
         self.psc = QLineEdit()
         self.nazev_profese = QLineEdit()
-        self.misto_mereni = QLineEdit()
         self.pracoviste = QLineEdit()
         self.ico = QLineEdit()
+
+        # Tlačítko "Dohledat" pro ARES API
+        self.ares_button = QPushButton("🔍 Dohledat")
+        self.ares_button.clicked.connect(self._on_ares_lookup)
+        self.ares_button.setMaximumWidth(120)
 
         self.smennost = QComboBox()
         self.smennost.addItems(["jednosměnný", "dvousměnný", "třísměnný", "nepřetržitý"])
@@ -463,10 +561,6 @@ class Page2_Firma(QWizardPage):
         self.datum_mereni = QDateEdit()
         self.datum_mereni.setDate(QDate.currentDate())
         self.datum_mereni.setCalendarPopup(True)
-
-        self.doba_mereni = QTimeEdit()
-        self.doba_mereni.setDisplayFormat("HH:mm:ss")
-        self.doba_mereni.setTime(QTime(0, 0, 0))
 
         self.evidencni_cislo = QLineEdit()
 
@@ -480,14 +574,89 @@ class Page2_Firma(QWizardPage):
         layout.addRow("Městská část:", self.mestska_cast)
         layout.addRow("PSČ:", self.psc)
         layout.addRow("Název Profese:", self.nazev_profese)
-        layout.addRow("Místo měření:", self.misto_mereni)
         layout.addRow("Pracoviště:", self.pracoviste)
-        layout.addRow("IČO:", self.ico)
+
+        # IČO + tlačítko Dohledat na stejném řádku
+        ico_layout = QHBoxLayout()
+        ico_layout.addWidget(self.ico)
+        ico_layout.addWidget(self.ares_button)
+        layout.addRow("IČO:", ico_layout)
+
         layout.addRow("Směnnost:", self.smennost)
         layout.addRow("Datum měření:", self.datum_mereni)
-        layout.addRow("Doba měření (hh:mm:ss):", self.doba_mereni)
         layout.addRow("Evidenční číslo:", self.evidencni_cislo)
         layout.addRow("Počet dní měření:", self.pocet_dni_mereni)
+
+    def _on_ares_lookup(self):
+        """Zavolá ARES API a vyplní firemní údaje"""
+        ico = self.ico.text().strip()
+
+        if not ico:
+            QMessageBox.warning(
+                self,
+                "Chyba",
+                "Zadejte IČO před použitím tlačítka Dohledat."
+            )
+            return
+
+        # Zobraz loading message
+        self.ares_button.setEnabled(False)
+        self.ares_button.setText("Načítám...")
+
+        try:
+            # Zavolej ARES API
+            ares_response = fetch_ares_data(ico)
+
+            if not ares_response:
+                QMessageBox.warning(
+                    self,
+                    "IČO nenalezeno",
+                    f"IČO {ico} nebylo nalezeno v databázi ARES.\n\n"
+                    f"Zkontrolujte prosím správnost zadaného IČO."
+                )
+                return
+
+            # Extrahuj data
+            company_data = extract_company_data_from_ares(ares_response)
+
+            # Vyplň pole (pouze pokud nejsou prázdné v odpovědi)
+            if company_data.get('company'):
+                self.firma.setText(company_data['company'])
+
+            if company_data.get('address'):
+                self.adresa.setText(company_data['address'])
+
+            if company_data.get('house_number'):
+                self.cislo_popisne.setText(company_data['house_number'])
+
+            if company_data.get('city'):
+                self.mesto.setText(company_data['city'])
+
+            if company_data.get('city_district'):
+                self.mestska_cast.setText(company_data['city_district'])
+
+            if company_data.get('postal_code'):
+                self.psc.setText(company_data['postal_code'])
+
+            # Zobraz success message
+            QMessageBox.information(
+                self,
+                "Úspěch",
+                f"✓ Data firmy '{company_data.get('company', 'N/A')}' byla načtena z ARES.\n\n"
+                f"Zkontrolujte prosím správnost údajů."
+            )
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Chyba",
+                f"Nepodařilo se načíst data z ARES:\n{str(e)}"
+            )
+
+        finally:
+            # Obnov tlačítko
+            self.ares_button.setEnabled(True)
+            self.ares_button.setText("🔍 Dohledat")
 
 
 class Page3_DalsiUdaje(QWizardPage):
@@ -505,19 +674,8 @@ class Page3_DalsiUdaje(QWizardPage):
         self.co_se_hodnoti = QComboBox()
         self.co_se_hodnoti.addItems(["kusy", "čas"])
 
-        self.vyska_pracovni_roviny = QLineEdit()
-        self.hmotnost_min = QDoubleSpinBox()
-        self.hmotnost_min.setMaximum(999.99)
-        self.hmotnost_min.setSuffix(" kg")
-        self.hmotnost_max = QDoubleSpinBox()
-        self.hmotnost_max.setMaximum(999.99)
-        self.hmotnost_max.setSuffix(" kg")
-
         layout.addRow("Práce je vykonávaná:", self.prace_vykonavana)
         layout.addRow("Co se hodnotí:", self.co_se_hodnoti)
-        layout.addRow("Výška pracovní roviny:", self.vyska_pracovni_roviny)
-        layout.addRow("Hmotnost ručně zvedaných břemen (min):", self.hmotnost_min)
-        layout.addRow("Hmotnost ručně zvedaných břemen (max):", self.hmotnost_max)
 
 
 class Page4_PracovnikA(QWizardPage):
