@@ -413,6 +413,16 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
     context["today_date"] = datetime.now().strftime("%d.%m.%Y")
     print(f"✓ Dnešní datum přidáno: {context['today_date']}")
 
+    # DEBUG: Vypis klice v section_generated_texts
+    if "section_generated_texts" in context:
+        print(f"✓ section_generated_texts obsahuje {len(context['section_generated_texts'])} položek")
+        if "jedenacta_text_podminka" in context["section_generated_texts"]:
+            print(f"✓ jedenacta_text_podminka = '{context['section_generated_texts']['jedenacta_text_podminka']}'")
+        else:
+            print("⚠ CHYBA: jedenacta_text_podminka CHYBÍ v section_generated_texts!")
+    else:
+        print("⚠ CHYBA: section_generated_texts CHYBÍ v contextu!")
+
     # ZAKOMENTOVÁNO: Vkládání grafů zakázáno
     # # Přidat grafy jako obrázky (z project folder) - PNG formát
     # graf1_path = project_folder / "lsz_charts" / "graf1.png"

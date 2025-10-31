@@ -270,6 +270,17 @@ class Page0_VyberSouboru(QWizardPage):
         layout.addWidget(self.checkbox_pp_cas)
         layout.addWidget(self.checkbox_pp_kusy)
         layout.addWidget(self.checkbox_cfz)
+        layout.addSpacing(20)
+
+        # === NOVÉ: Výběr pohlaví pracovníků ===
+        gender_label = QLabel("<b>Pohlaví měřených pracovníků:</b>")
+        layout.addWidget(gender_label)
+
+        self.gender_combo = QComboBox()
+        self.gender_combo.addItems(["Muži", "Ženy"])
+        self.gender_combo.setCurrentIndex(0)  # Default: Muži
+        layout.addWidget(self.gender_combo)
+
         layout.addStretch()
 
 

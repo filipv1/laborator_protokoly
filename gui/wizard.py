@@ -101,7 +101,8 @@ class MeasurementGUI(QWizard):
             },
             "section3_additional_data": {
                 "work_performed": self.page3.prace_vykonavana.currentText(),
-                "what_is_evaluated": self.page3.co_se_hodnoti.currentText()
+                "what_is_evaluated": self.page3.co_se_hodnoti.currentText(),
+                "workers_gender": self.page0.gender_combo.currentText().lower()  # "muži" nebo "ženy"
             },
             "section4_worker_a": {
                 "full_name": self.page4.jmeno_a.text(),

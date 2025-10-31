@@ -195,6 +195,9 @@ class WordProtocolGeneratorDialog(QDialog):
             # Auto-suggest output path
             self._auto_suggest_output()
 
+            # NOVÉ: Auto-select správný Word template podle pohlaví
+            self._auto_select_template_by_gender()
+
     def _auto_select_lsz_excel(self):
         """Automaticky najde LSZ Excel v project folder"""
         if not self.project_folder:
@@ -217,6 +220,65 @@ class WordProtocolGeneratorDialog(QDialog):
         self.output_line.itemAt(0).widget().setText(str(output_path))
         self.output_status.setText("✓ Cesta nastavena")
         self.output_status.setStyleSheet("color: green;")
+
+    def _auto_select_template_by_gender(self):
+        """Automaticky vybere správný Word template podle pohlaví z measurement_data.json"""
+        if not self.project_folder:
+            return
+
+        try:
+            import json
+            measurement_json = self.project_folder / "measurement_data.json"
+
+            if not measurement_json.exists():
+                print("⚠ measurement_data.json nenalezen pro auto-select template")
+                return
+
+            # Načti JSON
+            with open(measurement_json, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # Zjisti pohlaví
+            gender = data.get("section3_additional_data", {}).get("workers_gender", "muži")
+            print(f"→ Zjištěno pohlaví: {gender}")
+
+            # Mapování pohlaví → template filename
+            template_map = {
+                "muži": "lsz_placeholdery_v2.docx",
+                "ženy": "lsz_placeholdery_v2_females.docx"
+            }
+
+            template_filename = template_map.get(gender, "lsz_placeholdery_v2.docx")  # Fallback na muže
+
+            # Hledej template v různých lokacích
+            # Oba templates jsou ve složce "Autorizované protokoly pro MUŽE"
+            possible_paths = [
+                Path(f"Vzorové protokoly/Autorizované protokoly pro MUŽE/{template_filename}"),
+                self._get_resource_path("Vzorové protokoly") / "Autorizované protokoly pro MUŽE" / template_filename,
+            ]
+
+            # Najdi první existující cestu
+            selected_template = None
+            for path in possible_paths:
+                if path.exists():
+                    selected_template = path
+                    break
+
+            if selected_template:
+                self.template_path = selected_template
+                self.template_line.itemAt(0).widget().setText(str(selected_template))
+                self.template_status.setText(f"✓ Template pro {gender} nastaven")
+                self.template_status.setStyleSheet("color: green;")
+                print(f"✓ Auto-selected template: {selected_template}")
+            else:
+                print(f"⚠ Template pro {gender} nenalezen, vyberte ručně")
+                self.template_status.setText("⚠ Vyberte šablonu ručně")
+                self.template_status.setStyleSheet("color: orange;")
+
+        except Exception as e:
+            print(f"⚠ Chyba při auto-select template: {e}")
+            import traceback
+            traceback.print_exc()
 
     def _browse_excel(self):
         """Dialog pro výběr LSZ Excel"""

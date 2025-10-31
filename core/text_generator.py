@@ -580,6 +580,133 @@ def _calculate_hygiene_limits(results_data: Dict[str, Any]) -> Dict[str, int]:
     return result
 
 
+def _calculate_desata_text_podminka(devata_data: Dict[str, str]) -> str:
+    """
+    Vypočítá text pro desatou podmínku - celkové překročení limitu.
+
+    Zkontroluje všechny 4 hodnoty z devátého textu (phk_extenzory, phk_flexory,
+    lhk_extenzory, lhk_flexory). Pokud je ALESPOŇ JEDNA "Nad limitem",
+    vrátí "Nad limitem", jinak "Pod limitem".
+
+    Args:
+        devata_data: Výstup z _calculate_devata_text_podminka
+                    {"phk_extenzory": "Nad limitem" | "Pod limitem", ...}
+
+    Returns:
+        "Nad limitem" | "Pod limitem"
+    """
+    # Zkontroluj všechny 4 hodnoty
+    values = [
+        devata_data.get("phk_extenzory", "Pod limitem"),
+        devata_data.get("phk_flexory", "Pod limitem"),
+        devata_data.get("lhk_extenzory", "Pod limitem"),
+        devata_data.get("lhk_flexory", "Pod limitem")
+    ]
+
+    # Pokud je alespoň jedna hodnota "Nad limitem", vrať "Nad limitem"
+    if any(v == "Nad limitem" for v in values):
+        return "Nad limitem"
+    else:
+        return "Pod limitem"
+
+
+def _calculate_jedenacta_text_podminka(results_data: Dict[str, Any]) -> str:
+    """
+    Vypočítá text pro jedenáctou podmínku - hierarchické vyhodnocení zatížení všech svalových skupin.
+
+    Vyhodnotí všechny 4 svalové skupiny (PHK extenzory, PHK flexory, LHK extenzory, LHK flexory)
+    vzhledem k jejich hygienickým limitům.
+
+    HIERARCHIE (priorita od nejvyšší):
+    3. Alespoň jeden sval překračuje hygienický limit (počet pohybů > limit)
+    2. Alespoň jeden sval je nad 1/3 hygienického limitu, ale žádný nepřekračuje celý limit
+    1. Žádný sval není nad 1/3 hygienického limitu
+
+    Args:
+        results_data: Data z lsz_results.json
+
+    Returns:
+        "1" - žádný sval není nad 1/3 hygienického limitu
+        "2" - alespoň jeden sval je nad 1/3 limitu, ale žádný nepřekračuje limit
+        "3" - alespoň jeden sval překračuje hygienický limit
+    """
+    table = results_data.get("table_W4_Y51", {})
+    phk_movements = results_data.get("phk_number_of_movements")
+    lhk_movements = results_data.get("lhk_number_of_movements")
+
+    # Fallback pokud chybí data
+    if not table or phk_movements is None or lhk_movements is None:
+        return "1"
+
+    # Flagy pro vyhodnocení
+    over_limit = False  # Alespoň jeden sval > limit
+    over_one_third = False  # Alespoň jeden sval > 1/3 limitu
+
+    # === PHK EXTENZORY ===
+    fmax_phk_ext = results_data.get("Fmax_Phk_Extenzor")
+    if fmax_phk_ext is not None:
+        fmax_rounded = _math_round(fmax_phk_ext)
+        row = _find_in_table_W4_Y51(table, fmax_rounded)
+        if row is not None:
+            limit = row.get("phk", 0)
+            one_third_limit = limit / 3
+
+            if phk_movements > limit:
+                over_limit = True
+            elif phk_movements > one_third_limit:
+                over_one_third = True
+
+    # === PHK FLEXORY ===
+    fmax_phk_flex = results_data.get("Fmax_Phk_Flexor")
+    if fmax_phk_flex is not None:
+        fmax_rounded = _math_round(fmax_phk_flex)
+        row = _find_in_table_W4_Y51(table, fmax_rounded)
+        if row is not None:
+            limit = row.get("phk", 0)
+            one_third_limit = limit / 3
+
+            if phk_movements > limit:
+                over_limit = True
+            elif phk_movements > one_third_limit:
+                over_one_third = True
+
+    # === LHK EXTENZORY ===
+    fmax_lhk_ext = results_data.get("Fmax_Lhk_Extenzor")
+    if fmax_lhk_ext is not None:
+        fmax_rounded = _math_round(fmax_lhk_ext)
+        row = _find_in_table_W4_Y51(table, fmax_rounded)
+        if row is not None:
+            limit = row.get("lhk", 0)
+            one_third_limit = limit / 3
+
+            if lhk_movements > limit:
+                over_limit = True
+            elif lhk_movements > one_third_limit:
+                over_one_third = True
+
+    # === LHK FLEXORY ===
+    fmax_lhk_flex = results_data.get("Fmax_Lhk_Flexor")
+    if fmax_lhk_flex is not None:
+        fmax_rounded = _math_round(fmax_lhk_flex)
+        row = _find_in_table_W4_Y51(table, fmax_rounded)
+        if row is not None:
+            limit = row.get("lhk", 0)
+            one_third_limit = limit / 3
+
+            if lhk_movements > limit:
+                over_limit = True
+            elif lhk_movements > one_third_limit:
+                over_one_third = True
+
+    # Hierarchické vyhodnocení (priorita: 3 > 2 > 1)
+    if over_limit:
+        return "3"
+    elif over_one_third:
+        return "2"
+    else:
+        return "1"
+
+
 def generate_conditional_texts(measurement_data: Dict[str, Any], results_data: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
     """
     Vygeneruje podmínkové texty na základě dat z measurement_data.json a results_data.
@@ -604,13 +731,19 @@ def generate_conditional_texts(measurement_data: Dict[str, Any], results_data: O
     """
     texts = {}
 
-    # PODMÍNKA 1: Počet dnů měření
+    # PODMÍNKA 1: Počet dnů měření + pohlaví
     measurement_days = measurement_data.get("section0_file_selection", {}).get("measurement_days", 1)
+    gender = measurement_data.get("section3_additional_data", {}).get("workers_gender", "muži")
 
-    if measurement_days == 1:
-        texts["prvni_text_podminka_pocetdni"] = "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřeni byli 2 pracovníci – muži."
-    elif measurement_days == 2:
-        texts["prvni_text_podminka_pocetdni"] = "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřeni byli 2 pracovníci – muži."
+    # Matice všech kombinací (2 dny × 2 pohlaví = 4 varianty)
+    prvni_text_varianty = {
+        (1, "muži"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřeni byli 2 pracovníci – muži.",
+        (1, "ženy"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřeny byly 2 pracovnice – ženy.",
+        (2, "muži"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřeni byli 2 pracovníci – muži.",
+        (2, "ženy"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřeny byly 2 pracovnice – ženy.",
+    }
+
+    texts["prvni_text_podminka_pocetdni"] = prvni_text_varianty.get((measurement_days, gender), prvni_text_varianty[(1, "muži")])
 
     # PODMÍNKA 2: Hygienické limity PHK (pouze pokud jsou k dispozici results_data)
     if results_data is not None:
@@ -643,6 +776,15 @@ def generate_conditional_texts(measurement_data: Dict[str, Any], results_data: O
     # PODMÍNKA 9: Tabulka hygienických limitů (Nad limitem / Pod limitem pro všechny 4 svalové skupiny)
     if results_data is not None:
         texts["devata_text_podminka"] = _calculate_devata_text_podminka(results_data)
+
+    # PODMÍNKA 10: Celkové překročení limitu (pokud je alespoň jedna svalová skupina nad limitem)
+    if results_data is not None:
+        devata_data = texts.get("devata_text_podminka", {})
+        texts["desata_text_podminka"] = _calculate_desata_text_podminka(devata_data)
+
+    # PODMÍNKA 11: Hierarchické vyhodnocení zatížení (1/3 limitu vs celý limit)
+    if results_data is not None:
+        texts["jedenacta_text_podminka"] = _calculate_jedenacta_text_podminka(results_data)
 
     # HYGIENICKÉ LIMITY: Číselné hodnoty limitů z table_W4_Y51
     if results_data is not None:
