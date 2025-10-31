@@ -139,26 +139,39 @@ def read_movements_per_unit_from_worker(wb, sheet_name, what_is_evaluated):
     return movements
 
 
-def read_lsz_results(excel_path, what_is_evaluated="kusy"):
+def read_lsz_results(excel_path, what_is_evaluated="kusy", worker_count=2):
     """
     Načte výsledky z LSZ Excel souboru
 
     Args:
         excel_path: Cesta k LSZ Excel souboru
         what_is_evaluated: "čas" nebo "kusy" (z measurement_data.json)
+        worker_count: Počet pracovníků (1 nebo 2)
     """
     wb = openpyxl.load_workbook(excel_path, data_only=True)
     ws = wb["Celkové výsledky"]
 
-    # Single cells
-    results = {
-        "Fmax_Phk_Extenzor": ws["K45"].value,
-        "Fmax_Phk_Flexor": ws["L45"].value,
-        "phk_number_of_movements": ws["M45"].value,
-        "Fmax_Lhk_Extenzor": ws["O45"].value,
-        "Fmax_Lhk_Flexor": ws["Q45"].value,
-        "lhk_number_of_movements": ws["S45"].value,
-    }
+    # Single cells - podle počtu pracovníků
+    if worker_count == 1:
+        # Pro 1 pracovníka: čti z řádku 47 (jen pracovník 1, bez průměrování)
+        results = {
+            "Fmax_Phk_Extenzor": ws["D47"].value,
+            "Fmax_Phk_Flexor": ws["E47"].value,
+            "phk_number_of_movements": ws["F47"].value,
+            "Fmax_Lhk_Extenzor": ws["G47"].value,
+            "Fmax_Lhk_Flexor": ws["H47"].value,
+            "lhk_number_of_movements": ws["I47"].value,
+        }
+    else:
+        # Pro 2 pracovníky: čti z řádku 45 (průměry obou pracovníků)
+        results = {
+            "Fmax_Phk_Extenzor": ws["K45"].value,
+            "Fmax_Phk_Flexor": ws["L45"].value,
+            "phk_number_of_movements": ws["M45"].value,
+            "Fmax_Lhk_Extenzor": ws["O45"].value,
+            "Fmax_Lhk_Flexor": ws["Q45"].value,
+            "lhk_number_of_movements": ws["S45"].value,
+        }
 
     # Tabulka W4-Y51 (hardcoded)
     table1 = {}

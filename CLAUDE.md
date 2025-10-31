@@ -247,7 +247,7 @@ The `WordProtocolPipeline` class orchestrates the complete generation process:
 ### Conditional Text System
 The application generates Word protocols with dynamic text based on measurement results. This is handled by `core/text_generator.py`:
 
-**Nine conditional text generators:**
+**Eleven conditional text generators:**
 1. **prvni_text_podminka_pocetdni** - Based on measurement days (1 or 2 days)
 2. **druhy_text_podminka_limit1** - PHK hygiene limits (4 text variants based on extensor/flexor limits)
 3. **treti_text_podminka_limit1** - LHK hygiene limits (4 text variants based on extensor/flexor limits)
@@ -256,18 +256,26 @@ The application generates Word protocols with dynamic text based on measurement 
 6. **sesty_text_podminka** - Values over 100 check for force_over_70 only ("je" or "není")
 7. **sedmy_text_podminka** - Large forces (55-70% Fmax) limit check (full sentence)
 8. **osmy_text_podminka** - List of activities with force_over_70 > 100 (comma-separated or empty)
-9. **devata_text_podminka** - Additional conditional text variant
+9. **devata_text_podminka** - Detailed text variant with force categories
+10. **desata_text_podminka** - Hierarchical evaluation text based on devata_text_podminka results
+11. **jedenacta_text_podminka** - Overall load level ("1", "2", or "3") based on all 4 muscle groups vs hygiene limits
+   - Returns "1" if ALL muscle groups are below 1/3 of hygiene limit (low load)
+   - Returns "2" if at least one is above 1/3 limit but none exceed the full limit (medium load)
+   - Returns "3" if at least one exceeds the full hygiene limit (high load, limit exceeded)
+   - Evaluates all 4 muscle groups: PHK extensor, PHK flexor, LHK extensor, LHK flexor
+   - See `JEDENACTA_PODMINKA_DOKUMENTACE.md` for detailed algorithm and edge cases
 
 **Key function:**
 ```python
 generate_conditional_texts(measurement_data: dict, results_data: dict) -> dict
 ```
 - Reads `measurement_data.json` (GUI input) and `lsz_results.json` (Excel results)
-- Returns dictionary with 9 generated text keys
+- Returns dictionary with 11 generated text keys
 - Uses mathematical rounding (_math_round) for consistency with Excel
 - Looks up values in table_W4_Y51 and table_force_distribution
 - Calculates work shift-based limits for large forces (55-70% Fmax)
 - Analyzes all activities in table_force_distribution to find those with force_over_70 > 100
+- Evaluates hierarchical load levels based on hygiene limits (11th condition)
 
 ### Word Template Structure
 Templates use **docxtpl** (Jinja2 syntax) with two-JSON context:
@@ -301,9 +309,11 @@ highlight_selected_holters(docx_path, selected_holter_numbers)
 - `gui/word_protocol_dialog.py` - GUI dialog for Word generation
 - `generate_word_from_two_sources.py` - Word generation script (called by pipeline)
 - `read_lsz_results.py` - Reads results data from Excel files
+- `core/text_generator.py` - All 11 conditional text generators
 - `WORD_PLACEHOLDERS_GUIDE.md` - Guide for two-JSON context structure
 - `TABLES_ANALYSIS.md` - Analysis of Excel table structures
-- Test scripts: `test_word_generation_integration.py`, `test_conditional_texts.py`, etc.
+- `JEDENACTA_PODMINKA_DOKUMENTACE.md` - Documentation for 11th conditional text (hierarchical load evaluation)
+- Test scripts: `test_word_generation_integration.py`, `test_conditional_texts.py`, `test_jedenacta_text_podminka.py`, etc.
 
 ## Building Standalone EXE
 
@@ -347,13 +357,14 @@ See `JAK_VYTVORIT_EXE.md` for detailed build instructions and troubleshooting.
 - Word protocol generation with conditional text logic
 - Two-JSON context system (measurement_data + results_data)
 - File upload and management system
-- Conditional text generators (9 variants)
+- Conditional text generators (11 variants, including hierarchical load evaluation)
 - Holter highlighting in Word tables
 - Force highlighting with red colors in Word output
 - **GUI integration of Word generation** (via WordProtocolGeneratorDialog)
 - **WordProtocolPipeline** for orchestrating complete generation workflow
 - Main menu with workflow selection
 - **PyInstaller build system** for standalone EXE distribution
+- **11th conditional text** (jedenacta_text_podminka) - hierarchical evaluation of all 4 muscle groups
 
 **Not Yet Implemented (see NEXT_STEPS_ANALYSIS.md):**
 - All 15 Word template variants (currently only test templates exist)
@@ -395,7 +406,7 @@ When modifying:
 - **Path handling:** Use `pathlib.Path` throughout (already established pattern)
 - **Error handling:** Word generation dialog uses QMessageBox for errors; wizard still prints to console
 - **Word templates:** Use two-JSON context (`input` and `results`) to separate GUI data from calculated results
-- **Conditional texts:** All 9 conditional text generators are in `text_generator.py` - modify there for text logic changes
+- **Conditional texts:** All 11 conditional text generators are in `text_generator.py` - modify there for text logic changes
 - **File uploads:** Temporary files are managed by `FileManager` and cleaned up on app exit (via atexit hook)
 - **Word pipeline:** `WordProtocolPipeline` orchestrates the complete generation - modify here to change the workflow
 
@@ -416,6 +427,8 @@ python main.py
 - `test_word_generation_integration.py` - Full Word generation workflow
 - `test_conditional_texts.py` - Tests prvni_text_podminka
 - `test_druhy_text_podminka.py` through `test_devata_text_podminka.py` - Individual condition tests
+- `test_jedenacta_text_podminka.py` - Tests 11th conditional text (hierarchical load evaluation)
+- `test_jedenacta_text_podminka_hranicni_pripady.py` - Tests edge cases for 11th condition
 - `test_final_all_six_conditions.py` - Tests multiple conditions together
 - `test_all_seven_conditions.py` - Tests seven conditional texts
 - `test_subdoc_integration.py` - Subdocument integration tests

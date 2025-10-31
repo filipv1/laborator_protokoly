@@ -222,7 +222,7 @@ class WordProtocolGeneratorDialog(QDialog):
         self.output_status.setStyleSheet("color: green;")
 
     def _auto_select_template_by_gender(self):
-        """Automaticky vybere správný Word template podle pohlaví z measurement_data.json"""
+        """Automaticky vybere správný Word template podle počtu pracovníků a pohlaví z measurement_data.json"""
         if not self.project_folder:
             return
 
@@ -238,23 +238,35 @@ class WordProtocolGeneratorDialog(QDialog):
             with open(measurement_json, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            # Zjisti pohlaví
-            gender = data.get("section3_additional_data", {}).get("workers_gender", "muži")
-            print(f"→ Zjištěno pohlaví: {gender}")
+            # Zjisti počet pracovníků a pohlaví ze section0_file_selection
+            section0 = data.get("section0_file_selection", {})
+            worker_count = section0.get("worker_count", 2)  # Default: 2 pracovníci
+            gender = section0.get("workers_gender", "muži")  # Default: muži
 
-            # Mapování pohlaví → template filename
+            print(f"→ Zjištěno: {worker_count} pracovník(ů), pohlaví: {gender}")
+
+            # Mapování (worker_count, gender) → (template_filename, folder)
             template_map = {
-                "muži": "lsz_placeholdery_v2.docx",
-                "ženy": "lsz_placeholdery_v2_females.docx"
+                (1, "muži"): ("LSZ_jeden_MUŽ.DOCX", "Jeden zaměstnanec"),
+                (1, "ženy"): ("LSZ_jeden_ŽENA.DOCX", "Jeden zaměstnanec"),
+                (2, "muži"): ("lsz_placeholdery_v2.docx", "Autorizované protokoly pro MUŽE"),
+                (2, "ženy"): ("lsz_placeholdery_v2_females.docx", "Autorizované protokoly pro MUŽE")
             }
 
-            template_filename = template_map.get(gender, "lsz_placeholdery_v2.docx")  # Fallback na muže
+            # Zjisti template filename a složku
+            template_info = template_map.get((worker_count, gender))
+            if not template_info:
+                print(f"⚠ Neznámá kombinace: {worker_count} pracovník(ů) + {gender}")
+                self.template_status.setText("⚠ Vyberte šablonu ručně")
+                self.template_status.setStyleSheet("color: orange;")
+                return
+
+            template_filename, template_folder = template_info
 
             # Hledej template v různých lokacích
-            # Oba templates jsou ve složce "Autorizované protokoly pro MUŽE"
             possible_paths = [
-                Path(f"Vzorové protokoly/Autorizované protokoly pro MUŽE/{template_filename}"),
-                self._get_resource_path("Vzorové protokoly") / "Autorizované protokoly pro MUŽE" / template_filename,
+                Path(f"Vzorové protokoly/{template_folder}/{template_filename}"),
+                self._get_resource_path("Vzorové protokoly") / template_folder / template_filename,
             ]
 
             # Najdi první existující cestu
@@ -267,11 +279,11 @@ class WordProtocolGeneratorDialog(QDialog):
             if selected_template:
                 self.template_path = selected_template
                 self.template_line.itemAt(0).widget().setText(str(selected_template))
-                self.template_status.setText(f"✓ Template pro {gender} nastaven")
+                self.template_status.setText(f"✓ Template pro {worker_count} {gender} nastaven")
                 self.template_status.setStyleSheet("color: green;")
                 print(f"✓ Auto-selected template: {selected_template}")
             else:
-                print(f"⚠ Template pro {gender} nenalezen, vyberte ručně")
+                print(f"⚠ Template pro {worker_count} {gender} nenalezen: {template_filename}")
                 self.template_status.setText("⚠ Vyberte šablonu ručně")
                 self.template_status.setStyleSheet("color: orange;")
 
@@ -336,7 +348,7 @@ class WordProtocolGeneratorDialog(QDialog):
 
         if file_path:
             output_path = Path(file_path)
-            if output_path.suffix != '.docx':
+            if output_path.suffix.lower() != '.docx':
                 output_path = output_path.with_suffix('.docx')
 
             self.output_path = output_path

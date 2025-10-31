@@ -145,19 +145,25 @@ def _calculate_treti_text_podminka_limit1(results_data: Dict[str, Any]) -> str:
     return TEXTS[(extenzor_flag, flexor_flag)]
 
 
-def _calculate_ctvrty_text_podminka(results_data: Dict[str, Any]) -> str:
+def _calculate_ctvrty_text_podminka(results_data: Dict[str, Any], worker_count: int = 2) -> str:
     """
     Vypočítá text pro ctvrty_text_podminka na základě rozložení svalových sil.
 
     Args:
         results_data: Data z lsz_results.json
+        worker_count: Počet pracovníků (1 nebo 2)
 
     Returns:
         "nejsou" | "ojediněle" | "pravidelně"
     """
-    # Načti tabulku force_distribution, řádek 21 (Celkem)
+    # Načti tabulku force_distribution
     table = results_data.get("table_force_distribution", {})
-    row = table.get("21", {})
+
+    # Vyber správný řádek Celkem podle počtu pracovníků
+    # Pro 1 pracovníka: řádek 7 (Celkem 1. měřené osoby)
+    # Pro 2 pracovníky: řádek 21 (časově vážený průměr)
+    celkem_row_key = "7" if worker_count == 1 else "21"
+    row = table.get(celkem_row_key, {})
 
     # Pokud řádek neexistuje, fallback na "nejsou"
     if not row:
@@ -187,19 +193,25 @@ def _calculate_ctvrty_text_podminka(results_data: Dict[str, Any]) -> str:
         return "ojediněle"
 
 
-def _calculate_paty_text_podminka(results_data: Dict[str, Any]) -> str:
+def _calculate_paty_text_podminka(results_data: Dict[str, Any], worker_count: int = 2) -> str:
     """
     Vypočítá text pro paty_text_podminka na základě nadlimitních svalových sil (nad 70% Fmax).
 
     Args:
         results_data: Data z lsz_results.json
+        worker_count: Počet pracovníků (1 nebo 2)
 
     Returns:
         Text podle kombinace 4 hodnot force_over_70
     """
-    # Načti tabulku force_distribution, řádek 21 (Celkem)
+    # Načti tabulku force_distribution
     table = results_data.get("table_force_distribution", {})
-    row = table.get("21", {})
+
+    # Vyber správný řádek Celkem podle počtu pracovníků
+    # Pro 1 pracovníka: řádek 7 (Celkem 1. měřené osoby)
+    # Pro 2 pracovníky: řádek 21 (časově vážený průměr)
+    celkem_row_key = "7" if worker_count == 1 else "21"
+    row = table.get(celkem_row_key, {})
 
     # Pokud řádek neexistuje, fallback
     if not row:
@@ -246,7 +258,7 @@ def _calculate_paty_text_podminka(results_data: Dict[str, Any]) -> str:
     return PATTERNS.get(flags, "Při provádění práce nedochází k vynakládání nadlimitních svalových sil u všech měřených svalových skupin rukou a předloktí (nad 70 % Fmax).")  # fallback pokud pattern neexistuje
 
 
-def _calculate_sesty_text_podminka(results_data: Dict[str, Any]) -> str:
+def _calculate_sesty_text_podminka(results_data: Dict[str, Any], worker_count: int = 2) -> str:
     """
     Vypočítá text pro sesty_text_podminka na základě hodnot > 100.
 
@@ -254,13 +266,19 @@ def _calculate_sesty_text_podminka(results_data: Dict[str, Any]) -> str:
 
     Args:
         results_data: Data z lsz_results.json
+        worker_count: Počet pracovníků (1 nebo 2)
 
     Returns:
         Celá věta o pravidelnosti vynakládání nadlimitních svalových sil
     """
-    # Načti tabulku force_distribution, řádek 21 (Celkem)
+    # Načti tabulku force_distribution
     table = results_data.get("table_force_distribution", {})
-    row = table.get("21", {})
+
+    # Vyber správný řádek Celkem podle počtu pracovníků
+    # Pro 1 pracovníka: řádek 7 (Celkem 1. měřené osoby)
+    # Pro 2 pracovníky: řádek 21 (časově vážený průměr)
+    celkem_row_key = "7" if worker_count == 1 else "21"
+    row = table.get(celkem_row_key, {})
 
     # Pokud řádek neexistuje, fallback
     if not row:
@@ -284,20 +302,21 @@ def _calculate_sesty_text_podminka(results_data: Dict[str, Any]) -> str:
         return "Vynakládání nadlimitních svalových sil není pravidelnou součástí výkonu prováděné práce."
 
 
-def _calculate_sedmy_text_podminka(measurement_data: Dict[str, Any], results_data: Dict[str, Any]) -> str:
+def _calculate_sedmy_text_podminka(measurement_data: Dict[str, Any], results_data: Dict[str, Any], worker_count: int = 2) -> str:
     """
     Vypočítá text pro sedmy_text_podminka na základě překročení limitu pro velké svalové síly (55-70% Fmax).
 
     Logika:
     - Načti délku směny (work_duration v minutách)
     - Vypočti limit = (work_duration / 2) + 360
-    - Sečti 4 hodnoty force_55_70_* z řádku 21 (Celkem)
+    - Sečti 4 hodnoty force_55_70_* z řádku Celkem
     - Pokud součet > limit → "překračuje u měřených svalových skupin..."
     - Jinak → "nepřekračuje u žádné z měřených svalových skupin..."
 
     Args:
         measurement_data: Data z measurement_data.json
         results_data: Data z lsz_results.json
+        worker_count: Počet pracovníků (1 nebo 2)
 
     Returns:
         Celá věta o překročení/nepřekročení hygienického limitu
@@ -319,9 +338,14 @@ def _calculate_sedmy_text_podminka(measurement_data: Dict[str, Any], results_dat
     # Vypočti limit podle vzorce: limit = (work_duration / 2) + 360
     limit = (work_duration / 2) + 360
 
-    # Načti tabulku force_distribution, řádek 21 (Celkem - průměrné hodnoty)
+    # Načti tabulku force_distribution
     table = results_data.get("table_force_distribution", {})
-    row = table.get("21", {})
+
+    # Vyber správný řádek Celkem podle počtu pracovníků
+    # Pro 1 pracovníka: řádek 7 (Celkem 1. měřené osoby)
+    # Pro 2 pracovníky: řádek 21 (časově vážený průměr)
+    celkem_row_key = "7" if worker_count == 1 else "21"
+    row = table.get(celkem_row_key, {})
 
     # Pokud řádek neexistuje, fallback
     if not row:
@@ -342,26 +366,27 @@ def _calculate_sedmy_text_podminka(measurement_data: Dict[str, Any], results_dat
         return "Celosměnový počet těchto sil nepřekračuje u žádné z měřených svalových skupin rukou a předloktí daný hygienický limit."
 
 
-def _calculate_osmy_text_podminka(results_data: Dict[str, Any]) -> str:
+def _calculate_osmy_text_podminka(results_data: Dict[str, Any], worker_count: int = 2) -> str:
     """
     Vypočítá text pro osmy_text_podminka - seznam činností s force_over_70 > 100.
 
     Logika:
     - Pokud sesty_text_podminka = "není" → prázdný string
     - Pokud sesty_text_podminka = "je":
-      - Projdi všechny řádky table_force_distribution (kromě "21" - Celkem)
+      - Projdi všechny řádky table_force_distribution (kromě "Celkem")
       - Pro každý řádek zkontroluj 4 hodnoty force_over_70_*
       - Pokud jakákoliv > 100 → přidej activity do seznamu
       - Vrať seznam oddělený čárkami
 
     Args:
         results_data: Data z lsz_results.json
+        worker_count: Počet pracovníků (1 nebo 2)
 
     Returns:
         Seznam činností oddělený čárkami, nebo prázdný string
     """
     # Nejdřív zkontroluj sesty_text_podminka
-    sesty = _calculate_sesty_text_podminka(results_data)
+    sesty = _calculate_sesty_text_podminka(results_data, worker_count)
 
     # Pokud sesty = "není", vrať prázdný string
     if sesty == "není":
@@ -375,15 +400,15 @@ def _calculate_osmy_text_podminka(results_data: Dict[str, Any]) -> str:
 
     activities = []
 
-    # Projdi všechny řádky kromě "21" (Celkem)
+    # Projdi všechny řádky kromě "Celkem" řádků
     for key, row in table.items():
-        # Skip řádek 21 (Celkem)
-        if key == "21":
-            continue
-
         # Načti activity
         activity = row.get("activity")
         if not activity:
+            continue
+
+        # Skip všechny řádky s "Celkem" (pro 1 pracovníka = 1 řádek, pro 2 = 3 řádky)
+        if activity == "Celkem":
             continue
 
         # Zkontroluj 4 hodnoty force_over_70
@@ -731,19 +756,33 @@ def generate_conditional_texts(measurement_data: Dict[str, Any], results_data: O
     """
     texts = {}
 
-    # PODMÍNKA 1: Počet dnů měření + pohlaví
-    measurement_days = measurement_data.get("section0_file_selection", {}).get("measurement_days", 1)
-    gender = measurement_data.get("section3_additional_data", {}).get("workers_gender", "muži")
+    # PODMÍNKA 1: Počet dnů měření + pohlaví + počet pracovníků
+    section0 = measurement_data.get("section0_file_selection", {})
+    section2 = measurement_data.get("section2_firma", {})
+    measurement_days = section2.get("measurement_days", 1)  # Z section2_firma
+    gender = section0.get("workers_gender", "muži")          # Z section0_file_selection
+    worker_count = section0.get("worker_count", 2)           # Z section0_file_selection
 
-    # Matice všech kombinací (2 dny × 2 pohlaví = 4 varianty)
+    # Matice všech kombinací (2 dny × 2 worker_count × 2 pohlaví = 8 variant)
     prvni_text_varianty = {
-        (1, "muži"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřeni byli 2 pracovníci – muži.",
-        (1, "ženy"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřeny byly 2 pracovnice – ženy.",
-        (2, "muži"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřeni byli 2 pracovníci – muži.",
-        (2, "ženy"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřeny byly 2 pracovnice – ženy.",
+        # 1 pracovník, 1 den
+        (1, 1, "muži"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřen byl 1 pracovník – muž.",
+        (1, 1, "ženy"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřena byla 1 pracovnice – žena.",
+
+        # 1 pracovník, 2 dny
+        (2, 1, "muži"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřen byl 1 pracovník – muž.",
+        (2, 1, "ženy"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřena byla 1 pracovnice – žena.",
+
+        # 2 pracovníci, 1 den
+        (1, 2, "muži"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřeni byli 2 pracovníci – muži.",
+        (1, 2, "ženy"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřeny byly 2 pracovnice – ženy.",
+
+        # 2 pracovníci, 2 dny
+        (2, 2, "muži"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřeni byli 2 pracovníci – muži.",
+        (2, 2, "ženy"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřeny byly 2 pracovnice – ženy.",
     }
 
-    texts["prvni_text_podminka_pocetdni"] = prvni_text_varianty.get((measurement_days, gender), prvni_text_varianty[(1, "muži")])
+    texts["prvni_text_podminka_pocetdni"] = prvni_text_varianty.get((measurement_days, worker_count, gender), prvni_text_varianty[(1, 2, "muži")])
 
     # PODMÍNKA 2: Hygienické limity PHK (pouze pokud jsou k dispozici results_data)
     if results_data is not None:
@@ -755,23 +794,23 @@ def generate_conditional_texts(measurement_data: Dict[str, Any], results_data: O
 
     # PODMÍNKA 4: Rozložení svalových sil (pouze pokud jsou k dispozici results_data)
     if results_data is not None:
-        texts["ctvrty_text_podminka"] = _calculate_ctvrty_text_podminka(results_data)
+        texts["ctvrty_text_podminka"] = _calculate_ctvrty_text_podminka(results_data, worker_count)
 
     # PODMÍNKA 5: Nadlimitní svalové síly nad 70% Fmax (pouze pokud jsou k dispozici results_data)
     if results_data is not None:
-        texts["paty_text_podminka"] = _calculate_paty_text_podminka(results_data)
+        texts["paty_text_podminka"] = _calculate_paty_text_podminka(results_data, worker_count)
 
     # PODMÍNKA 6: Hodnoty > 100 (pouze pokud jsou k dispozici results_data)
     if results_data is not None:
-        texts["sesty_text_podminka"] = _calculate_sesty_text_podminka(results_data)
+        texts["sesty_text_podminka"] = _calculate_sesty_text_podminka(results_data, worker_count)
 
     # PODMÍNKA 7: Překročení limitu pro velké svalové síly 55-70% Fmax (vyžaduje measurement_data i results_data)
     if results_data is not None:
-        texts["sedmy_text_podminka"] = _calculate_sedmy_text_podminka(measurement_data, results_data)
+        texts["sedmy_text_podminka"] = _calculate_sedmy_text_podminka(measurement_data, results_data, worker_count)
 
     # PODMÍNKA 8: Seznam činností s force_over_70 > 100 (pouze pokud jsou k dispozici results_data)
     if results_data is not None:
-        texts["osmy_text_podminka"] = _calculate_osmy_text_podminka(results_data)
+        texts["osmy_text_podminka"] = _calculate_osmy_text_podminka(results_data, worker_count)
 
     # PODMÍNKA 9: Tabulka hygienických limitů (Nad limitem / Pod limitem pro všechny 4 svalové skupiny)
     if results_data is not None:

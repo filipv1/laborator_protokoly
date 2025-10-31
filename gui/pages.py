@@ -272,7 +272,24 @@ class Page0_VyberSouboru(QWizardPage):
         layout.addWidget(self.checkbox_cfz)
         layout.addSpacing(20)
 
-        # === NOVÉ: Výběr pohlaví pracovníků ===
+        # === Počet pracovníků ===
+        worker_count_label = QLabel("<b>Počet měřených pracovníků:</b>")
+        layout.addWidget(worker_count_label)
+
+        self.worker_count_group = QButtonGroup(self)
+        self.radio_one_worker = QRadioButton("1 pracovník")
+        self.radio_two_workers = QRadioButton("2 pracovníci")
+
+        self.worker_count_group.addButton(self.radio_one_worker, 1)
+        self.worker_count_group.addButton(self.radio_two_workers, 2)
+
+        self.radio_two_workers.setChecked(True)  # Default: 2 pracovníci
+
+        layout.addWidget(self.radio_one_worker)
+        layout.addWidget(self.radio_two_workers)
+        layout.addSpacing(20)
+
+        # === Výběr pohlaví pracovníků ===
         gender_label = QLabel("<b>Pohlaví měřených pracovníků:</b>")
         layout.addWidget(gender_label)
 
@@ -756,6 +773,20 @@ class Page4_PracovnikA(QWizardPage):
         layout.addRow("Doba výkonu práce (min):", self.doba_vykonu_min_a)
         layout.addRow("Bezpečnostní přestávka (min):", self.bezpecnostni_prestavka_min_a)
         layout.addRow("Číslo hrudního pásu:", self.cislo_hrudniho_pasu_a)
+
+    def nextId(self):
+        """
+        Přeskočí Page5 (Pracovník B) pokud je vybrán pouze 1 pracovník.
+        """
+        # Získej wizard a Page0
+        wizard = self.wizard()
+        if wizard:
+            page0 = wizard.page0
+            # Pokud je vybrán 1 pracovník, přeskoč na Page6
+            if page0.worker_count_group.checkedId() == 1:
+                return 6  # Page6_Zaverecne
+        # Jinak pokračuj normálně na Page5
+        return 5  # Page5_PracovnikB
 
 
 class Page5_PracovnikB(QWizardPage):

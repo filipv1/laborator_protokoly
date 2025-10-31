@@ -8,7 +8,7 @@ LSZ_MAPPING = {
         # Pracovník A (sloupec D)
         "D12": "section4_worker_a.full_name",
         "D13": "section4_worker_a.initials",
-        "D14": "section3_additional_data.workers_gender",
+        "D14": "section0_file_selection.workers_gender",
         "D15": "section4_worker_a.laterality",
         "D16": "section4_worker_a.age_years",
         "D17": "section4_worker_a.exposure_length_years",
@@ -22,7 +22,7 @@ LSZ_MAPPING = {
         # Pracovník B (sloupec K, stejné řádky)
         "K12": "section5_worker_b.full_name",
         "K13": "section5_worker_b.initials",
-        "K14": "section3_additional_data.workers_gender",
+        "K14": "section0_file_selection.workers_gender",
         "K15": "section5_worker_b.laterality",
         "K16": "section5_worker_b.age_years",
         "K17": "section5_worker_b.exposure_length_years",
@@ -74,7 +74,7 @@ CFZ_MAPPING = {
     "Časový snímek A+B": {
         # Pracovník A (sloupec D)
         "D12": "section4_worker_a.full_name",
-        "D14": "section3_additional_data.workers_gender",
+        "D14": "section0_file_selection.workers_gender",
         "D15": "section4_worker_a.exposure_length_years",
         "D16": "section4_worker_a.age_years",
         "D17": "section4_worker_a.height_cm",
@@ -82,7 +82,7 @@ CFZ_MAPPING = {
 
         # Pracovník B (sloupec K, stejné řádky)
         "K12": "section5_worker_b.full_name",
-        "K14": "section3_additional_data.workers_gender",
+        "K14": "section0_file_selection.workers_gender",
         "K15": "section5_worker_b.exposure_length_years",
         "K16": "section5_worker_b.age_years",
         "K17": "section5_worker_b.height_cm",

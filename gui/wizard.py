@@ -77,7 +77,9 @@ class MeasurementGUI(QWizard):
                 "generate_lsz": self.page0.checkbox_lsz.isChecked(),
                 "generate_pp_time": self.page0.checkbox_pp_cas.isChecked(),
                 "generate_pp_pieces": self.page0.checkbox_pp_kusy.isChecked(),
-                "generate_cfz": self.page0.checkbox_cfz.isChecked()
+                "generate_cfz": self.page0.checkbox_cfz.isChecked(),
+                "worker_count": self.page0.worker_count_group.checkedId(),  # 1 nebo 2
+                "workers_gender": self.page0.gender_combo.currentText().lower()  # "muži" nebo "ženy"
             },
             "section1_uploaded_docx": {
                 "uploaded_file_path": self.page1.selected_file_path if self.page1.selected_file_path else "",
@@ -101,8 +103,7 @@ class MeasurementGUI(QWizard):
             },
             "section3_additional_data": {
                 "work_performed": self.page3.prace_vykonavana.currentText(),
-                "what_is_evaluated": self.page3.co_se_hodnoti.currentText(),
-                "workers_gender": self.page0.gender_combo.currentText().lower()  # "muži" nebo "ženy"
+                "what_is_evaluated": self.page3.co_se_hodnoti.currentText()
             },
             "section4_worker_a": {
                 "full_name": self.page4.jmeno_a.text(),

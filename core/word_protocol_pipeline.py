@@ -45,11 +45,12 @@ class WordProtocolPipeline:
             if not self.measurement_json_path.exists():
                 return False, f"measurement_data.json nenalezen v:\n{self.project_folder}"
 
-            # Načti measurement_data.json pro zjištění what_is_evaluated
+            # Načti measurement_data.json pro zjištění what_is_evaluated a worker_count
             with open(self.measurement_json_path, encoding='utf-8') as f:
                 measurement_data = json.load(f)
 
             what_is_evaluated = measurement_data.get("section3_additional_data", {}).get("what_is_evaluated", "kusy")
+            worker_count = measurement_data.get("section0_file_selection", {}).get("worker_count", 2)
 
             # KROK 2: Validace Excel souboru
             excel_path = Path(excel_path)
@@ -64,14 +65,15 @@ class WordProtocolPipeline:
             if not template_path.exists():
                 return False, f"Word šablona nenalezena:\n{template_path}"
 
-            if template_path.suffix != '.docx':
+            if template_path.suffix.lower() != '.docx':
                 return False, f"Neplatná Word šablona (očekává se .docx):\n{template_path}"
 
             # KROK 4: Spustit read_lsz_results → vytvoří lsz_results.json
             print(f"→ Načítám data z Excel: {excel_path.name}")
             print(f"→ Co se hodnotí: {what_is_evaluated}")
+            print(f"→ Počet pracovníků: {worker_count}")
 
-            results = read_lsz_results(str(excel_path), what_is_evaluated)
+            results = read_lsz_results(str(excel_path), what_is_evaluated, worker_count)
 
             # ZAKOMENTOVÁNO: Export grafů zakázán
             # print("→ Exportuji grafy...")
@@ -86,7 +88,7 @@ class WordProtocolPipeline:
 
             # KROK 5: Validace output path
             output_path = Path(output_path)
-            if output_path.suffix != '.docx':
+            if output_path.suffix.lower() != '.docx':
                 return False, f"Neplatný výstupní soubor (očekává se .docx):\n{output_path}"
 
             # Vytvoř parent directory, pokud neexistuje
