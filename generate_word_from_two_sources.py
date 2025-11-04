@@ -721,6 +721,44 @@ def remove_empty_pp_rows(docx_path):
 
         print(f"  → Zpracovávám PP tabulku (index {table_idx})")
 
+        # Nejdřív spočítej kolik je datových řádků (ne záhlaví, ne sekce, ne OSTATNI)
+        initial_data_rows = 0
+        for row_idx in range(1, len(table.rows)):  # Skip row 0 (header)
+            try:
+                nazev_polohy = table.rows[row_idx].cells[0].text.strip()
+                nazev_upper = nazev_polohy.upper().strip()
+
+                # Skip záhlaví
+                if ("NEPŘIJATELNÁ" in nazev_upper or "PODMÍNĚNĚ" in nazev_upper or
+                    "PRACOVNÍ POLOHA" in nazev_upper or "SVALOVÁ PRÁCE" in nazev_upper):
+                    continue
+
+                # Skip sekce a OSTATNI
+                if (nazev_upper in section_keywords or
+                    "OSTATNI" in nazev_upper or "ULTRATHINK" in nazev_upper):
+                    continue
+
+                # Skip pokud obsahuje "Výskyt za směnu" nebo "MUŽ" v hodnotách
+                try:
+                    cell2 = table.rows[row_idx].cells[2].text.strip().upper()
+                    cell3 = table.rows[row_idx].cells[3].text.strip().upper()
+                    cell4 = table.rows[row_idx].cells[4].text.strip().upper()
+
+                    # Je to záhlaví pokud obsahuje tyto klíčové texty
+                    if ("VÝSKYT" in cell2 or "VÝSKYT" in cell3 or "VÝSKYT" in cell4 or
+                        "MUŽ" in cell2 or "MUŽ" in cell3 or
+                        "MIN" in cell2 or "MIN" in cell3 or "MIN" in cell4 or
+                        "PRŮMĚR" in cell4 or "PRUMER" in cell4 or
+                        "Ø" in cell4):
+                        continue
+                except:
+                    pass
+
+                # Toto je datový řádek
+                initial_data_rows += 1
+            except:
+                continue
+
         deleted_count = 0
         # Projdi řádky ODZADU (aby se neposunuly indexy při mazání)
         # Skip řádek 0 (hlavička)
@@ -782,53 +820,15 @@ def remove_empty_pp_rows(docx_path):
             tables_processed += 1
             print(f"  ✓ Smazáno {deleted_count} prázdných řádků z PP tabulky")
 
-        # Po odstranění prázdných řádků zkontroluj, jestli zbývají datové řádky
-        has_data_rows = False
-        for row_idx in range(1, len(table.rows)):  # Skip záhlaví (row 0)
-            try:
-                row = table.rows[row_idx]
-                cells = row.cells
-
-                # Získej název položky
-                try:
-                    nazev_polohy = cells[0].text.strip()
-                except (IndexError, AttributeError):
-                    nazev_polohy = ""
-
-                nazev_upper = nazev_polohy.upper().strip()
-
-                # Skip sekční nadpisy a OSTATNI řádky
-                if nazev_upper in section_keywords or "OSTATNI" in nazev_upper or "ULTRATHINK" in nazev_upper.upper():
-                    continue
-
-                # Zkontroluj jestli řádek má nenulová data
-                try:
-                    vyskyt_a = cells[2].text.strip()
-                except (IndexError, AttributeError):
-                    vyskyt_a = "0"
-
-                try:
-                    vyskyt_b = cells[3].text.strip()
-                except (IndexError, AttributeError):
-                    vyskyt_b = "0"
-
-                try:
-                    prumer = cells[4].text.strip()
-                except (IndexError, AttributeError):
-                    prumer = "0"
-
-                # Pokud alespoň jedna hodnota je nenulová, máme datový řádek
-                if not (is_empty_or_zero(vyskyt_a) and is_empty_or_zero(vyskyt_b) and is_empty_or_zero(prumer)):
-                    has_data_rows = True
-                    break
-
-            except Exception:
-                continue
-
-        # Pokud nezbyly žádné datové řádky, označ tabulku k odstranění
-        if not has_data_rows:
+        # Pokud jsme smazali VŠECHNY datové řádky NEBO tabulka neměla žádné datové řádky, označ k odstranění
+        if initial_data_rows == 0:
+            # Tabulka neměla žádné datové řádky od začátku
             tables_to_remove.append(table)
-            print(f"  → Tabulka {table_idx} nemá žádné datové řádky - bude odstraněna celá")
+            print(f"  → Tabulka neobsahuje žádné datové řádky - bude odstraněna celá")
+        elif initial_data_rows > 0 and deleted_count == initial_data_rows:
+            # Smazali jsme všechny datové řádky
+            tables_to_remove.append(table)
+            print(f"  → Smazány všechny datové řádky ({deleted_count}/{initial_data_rows}) - tabulka bude odstraněna celá")
 
     # Odstraň prázdné tabulky
     for table in tables_to_remove:
