@@ -338,12 +338,21 @@ def generate_word_protocol_v1(measurement_json, results_json, template_path, out
     print("  {% for row in results.table_somatometrie %}")
 
 
-def generate_word_protocol_v2(measurement_json, results_json, template_path, output_path):
+def generate_word_protocol_v2(measurement_json, results_json, template_path, output_path, protocol_type="LSZ"):
     """
     VARIANTA 2: Plochá struktura (flat merge)
     V Word šabloně používáš: {{ section1_firma.company }} a {{ Fmax_Phk_Extenzor }}
-    UPOZORNĚNÍ: Pokud mají oba JSONy stejné klíče, dojde ke kolizi!
+    Podporuje LSZ, PP (ČAS/KUSY) a CFZ protokoly
+
+    Args:
+        measurement_json: Cesta k measurement_data.json
+        results_json: Cesta k results JSON (lsz_results.json nebo pp_results.json)
+        template_path: Cesta k Word šabloně
+        output_path: Kam uložit vygenerovaný Word
+        protocol_type: Typ protokolu ("LSZ", "PP_CAS", "PP_KUSY", "CFZ")
     """
+    print(f"Generuji Word protokol pro: {protocol_type}")
+
     # Získej projekt folder (parent measurement_json)
     project_folder = Path(measurement_json).parent
 
@@ -354,8 +363,8 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
     with open(results_json, encoding='utf-8') as f:
         results_data = json.load(f)
 
-    # Vygeneruj podmínkové texty a přidej do input_data
-    conditional_texts = generate_conditional_texts(input_data, results_data)
+    # Vygeneruj podmínkové texty (s protocol_type parametrem)
+    conditional_texts = generate_conditional_texts(input_data, results_data, protocol_type=protocol_type)
     input_data["section_generated_texts"] = conditional_texts
 
     # Přejmenuj klíče pro kompatibilitu s Word template
@@ -460,9 +469,14 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
     highlight_force_distribution_values(output_path, input_data, results_data)
     print(f"  ✓ Červené zvýraznění dokončeno")
 
-    # POST-PROCESSING: Odstraň prázdné řádky z tabulek (kde activity = "0")
+    # POST-PROCESSING: Odstraň prázdné řádky z tabulek
     print(f"  → Odstraňuji prázdné řádky z tabulek...")
-    remove_empty_activity_rows(output_path)
+    if protocol_type in ["PP_CAS", "PP_KUSY"]:
+        # PP: Odstraň řádky kde vyskyt_min_a, vyskyt_min_b, prumer_min jsou všechny 0
+        remove_empty_pp_rows(output_path)
+    else:
+        # LSZ/CFZ: Odstraň řádky kde activity = "0"
+        remove_empty_activity_rows(output_path)
 
     # POZNÁMKA: Podmíněný text (požadavek 2) byl vložen PŘED načtením subdokumentu (viz výše)
 
@@ -632,6 +646,207 @@ def remove_empty_activity_rows(docx_path):
         print(f"  ✓ Celkem smazáno {total_deleted} prázdných řádků z {len(tables_to_clean)} tabulek")
     else:
         print(f"  ⚠ Žádné prázdné řádky k odstranění")
+
+
+def remove_empty_pp_rows(docx_path):
+    """
+    Smaže řádky z PP tabulek, kde všechny tři sloupce (vyskyt_min_a, vyskyt_min_b, prumer_min)
+    obsahují hodnotu 0 nebo jsou prázdné.
+    Pokud po odstranění nezůstanou žádné datové řádky, odstraní celou tabulku.
+
+    PP tabulky mají strukturu:
+    - Řádek 0: Hlavička (Nepřijatelná/podmíněně přijatelná... | Svalová práce | MUŽ 1 | MUŽ 2 | Ø | Typ)
+    - Řádek 1+: SECTION_NAME (TRUP, HLAVA_KRK, PHK, LHK, atd.) - UVNITŘ tabulky
+    - Řádek 2+: Data řádky (Název polohy | Typ práce | vyskyt_a | vyskyt_b | prumer | Typ PP)
+
+    Identifikace PP tabulky: 6 sloupců + obsahuje klíčová slova v buňkách
+
+    Struktura sloupců:
+    - Sloupec 0: Název polohy
+    - Sloupec 1: Typ svalové práce (Statická/Dynamická)
+    - Sloupec 2: Výskyt min pracovník A (vyskyt_min_a) ✓
+    - Sloupec 3: Výskyt min pracovník B (vyskyt_min_b) ✓
+    - Sloupec 4: Průměr min (prumer_min) ✓
+    - Sloupec 5: Typ pracovní polohy (N/PP)
+
+    Řádek se SMAŽE pokud: vyskyt_min_a == 0 AND vyskyt_min_b == 0 AND prumer_min == 0
+
+    Args:
+        docx_path: Cesta k vygenerovanému Word dokumentu
+    """
+    doc = Document(docx_path)
+
+    # Pomocná funkce pro kontrolu prázdné hodnoty
+    def is_empty_or_zero(value):
+        return value in ["0", "0.0", "", "None", "null"] or not value
+
+    # Klíčová slova pro identifikaci PP tabulek (hledáme UVNITŘ tabulky)
+    pp_keywords = [
+        "TRUP", "Trup",
+        "HLAVA_KRK", "HLAVA A KRK", "Hlava a krk",
+        "PHK", "Pravá horní končetina",
+        "LHK", "Levá horní končetina",
+        "DOLNÍ KONČETINY", "Dolní končetiny", "DKK",
+        "OSTATNÍ ČÁSTI TĚLA", "Ostatní části těla", "OST",
+        "Statická", "Dynamická"  # Typy svalové práce - přítomné ve všech PP tabulkách
+    ]
+
+    section_keywords = ["TRUP", "HLAVA_KRK", "HLAVA A KRK", "PHK", "LHK", "DOLNÍ KONČETINY", "DKK",
+                       "OSTATNÍ ČÁSTI TĚLA", "OSTATNI", "OST", "ULTRATHINK"]
+
+    total_deleted = 0
+    tables_processed = 0
+    tables_removed = 0
+    tables_to_remove = []  # Seznam tabulek k úplnému odstranění
+
+    # Projdi VŠECHNY tabulky v dokumentu
+    for table_idx, table in enumerate(doc.tables):
+        # Zkontroluj, jestli má tabulka 6 sloupců (PP tabulky mají 6 sloupců)
+        if len(table.columns) != 6:
+            continue
+
+        # Zkontroluj, jestli tabulka obsahuje PP keywords (aby se vyloučily jiné 6-sloupcové tabulky)
+        is_pp_table = False
+        for row in table.rows[:5]:  # Zkontroluj prvních 5 řádků
+            row_text = " ".join(cell.text for cell in row.cells)
+            for keyword in pp_keywords:
+                if keyword in row_text:
+                    is_pp_table = True
+                    break
+            if is_pp_table:
+                break
+
+        if not is_pp_table:
+            continue
+
+        print(f"  → Zpracovávám PP tabulku (index {table_idx})")
+
+        deleted_count = 0
+        # Projdi řádky ODZADU (aby se neposunuly indexy při mazání)
+        # Skip řádek 0 (hlavička)
+        for row_idx in range(len(table.rows) - 1, 0, -1):
+            # DEBUG pro PP tabulky - vypsat info o řádcích
+            try:
+                row = table.rows[row_idx]
+                cells = row.cells
+
+                # Bezpečné čtení hodnot s try-except pro každou buňku
+                try:
+                    nazev_polohy = cells[0].text.strip()
+                except (IndexError, AttributeError):
+                    nazev_polohy = ""
+
+                try:
+                    vyskyt_a = cells[2].text.strip()
+                except (IndexError, AttributeError):
+                    vyskyt_a = "0"  # Default 0 pro chybějící hodnoty
+
+                try:
+                    vyskyt_b = cells[3].text.strip()
+                except (IndexError, AttributeError):
+                    vyskyt_b = "0"  # Default 0
+
+                try:
+                    prumer = cells[4].text.strip()
+                except (IndexError, AttributeError):
+                    prumer = "0"  # Default 0
+
+                # Přeskoč section nadpisy (TRUP, HLAVA_KRK, atd.)
+                # Section header je POUZE pokud je to PŘESNĚ klíčové slovo (ne součást delšího textu)
+                is_section_header = False
+                nazev_upper = nazev_polohy.upper().strip()
+
+                # Je to section header pouze pokud je to PŘESNĚ jedno z klíčových slov
+                if nazev_upper in section_keywords:
+                    is_section_header = True
+                    continue
+
+                # DEBUG: Pro PP tabulky, vypiš co se děje
+                if not is_section_header:
+                    all_zero = is_empty_or_zero(vyskyt_a) and is_empty_or_zero(vyskyt_b) and is_empty_or_zero(prumer)
+                    # Vypsat pouze řádky, které budou smazány
+                    if all_zero:
+                        print(f"      Table {table_idx}, Row {row_idx}: SMAŽE '{nazev_polohy[:40]}...' [{vyskyt_a},{vyskyt_b},{prumer}]")
+
+                # Pokud VŠECHNY tři hodnoty jsou 0 nebo prázdné → smaž řádek
+                if is_empty_or_zero(vyskyt_a) and is_empty_or_zero(vyskyt_b) and is_empty_or_zero(prumer):
+                    table._element.remove(table.rows[row_idx]._element)
+                    deleted_count += 1
+
+            except Exception as e:
+                # Skip silently - problematické řádky
+                continue
+
+        if deleted_count > 0:
+            total_deleted += deleted_count
+            tables_processed += 1
+            print(f"  ✓ Smazáno {deleted_count} prázdných řádků z PP tabulky")
+
+        # Po odstranění prázdných řádků zkontroluj, jestli zbývají datové řádky
+        has_data_rows = False
+        for row_idx in range(1, len(table.rows)):  # Skip záhlaví (row 0)
+            try:
+                row = table.rows[row_idx]
+                cells = row.cells
+
+                # Získej název položky
+                try:
+                    nazev_polohy = cells[0].text.strip()
+                except (IndexError, AttributeError):
+                    nazev_polohy = ""
+
+                nazev_upper = nazev_polohy.upper().strip()
+
+                # Skip sekční nadpisy a OSTATNI řádky
+                if nazev_upper in section_keywords or "OSTATNI" in nazev_upper or "ULTRATHINK" in nazev_upper.upper():
+                    continue
+
+                # Zkontroluj jestli řádek má nenulová data
+                try:
+                    vyskyt_a = cells[2].text.strip()
+                except (IndexError, AttributeError):
+                    vyskyt_a = "0"
+
+                try:
+                    vyskyt_b = cells[3].text.strip()
+                except (IndexError, AttributeError):
+                    vyskyt_b = "0"
+
+                try:
+                    prumer = cells[4].text.strip()
+                except (IndexError, AttributeError):
+                    prumer = "0"
+
+                # Pokud alespoň jedna hodnota je nenulová, máme datový řádek
+                if not (is_empty_or_zero(vyskyt_a) and is_empty_or_zero(vyskyt_b) and is_empty_or_zero(prumer)):
+                    has_data_rows = True
+                    break
+
+            except Exception:
+                continue
+
+        # Pokud nezbyly žádné datové řádky, označ tabulku k odstranění
+        if not has_data_rows:
+            tables_to_remove.append(table)
+            print(f"  → Tabulka {table_idx} nemá žádné datové řádky - bude odstraněna celá")
+
+    # Odstraň prázdné tabulky
+    for table in tables_to_remove:
+        # Získej parent element a odstraň tabulku
+        parent = table._element.getparent()
+        parent.remove(table._element)
+        tables_removed += 1
+        print(f"  ✓ Odstraněna celá prázdná PP tabulka")
+
+    # Ulož dokument pokud byly nějaké změny
+    if total_deleted > 0 or tables_removed > 0:
+        doc.save(docx_path)
+        if total_deleted > 0:
+            print(f"  ✓ Celkem smazáno {total_deleted} prázdných PP řádků z {tables_processed} tabulek")
+        if tables_removed > 0:
+            print(f"  ✓ Celkem odstraněno {tables_removed} prázdných PP tabulek")
+    else:
+        print(f"  ⚠ Žádné prázdné PP řádky ani tabulky k odstranění")
 
 
 if __name__ == "__main__":
