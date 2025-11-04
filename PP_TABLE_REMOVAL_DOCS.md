@@ -119,3 +119,17 @@ Funkce je automaticky volána při generování PP protokolů:
 - Funkce zachovává okolní text a formátování
 - Odstranění tabulky neovlivní ostatní prvky dokumentu
 - Logování poskytuje informace o počtu odstraněných tabulek
+
+## Finální úprava (commit cc514f5)
+
+### Problém
+Tabulky obsahující pouze záhlaví a OSTATNI nebyly odstraňovány, protože řádky záhlaví s textem "Výskyt za směnu [min]" byly mylně počítány jako datové řádky.
+
+### Řešení
+Vylepšená detekce záhlaví - funkce nyní správně identifikuje záhlaví kontrolou klíčových slov v hodnotách:
+- "VÝSKYT", "MUŽ", "MIN", "PRŮMĚR", "Ø"
+- Tyto řádky se nepočítají jako datové řádky
+- Tabulka obsahující pouze záhlaví, sekce a OSTATNI je automaticky odstraněna
+
+### Výsledek
+PP protokoly neobsahují prázdné tabulky - pouze tabulky s reálnými daty zůstávají v dokumentu.
