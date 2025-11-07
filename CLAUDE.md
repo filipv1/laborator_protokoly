@@ -10,7 +10,7 @@ LABORATO5 is a PyQt6-based automation tool for a physical workload laboratory. I
 3. Generates project folders with pre-filled Excel files (LSZ, PP, CFZ variants)
 4. Copies tabular data (time schedules) into the appropriate Excel sheets
 
-**Current Status:** Prototype v2.0.0 - Core functionality implemented. Excel generation complete. Word protocol generation implemented with conditional text logic.
+**Current Status:** Prototype v2.0.0 - Core functionality implemented. Excel generation complete. Word protocol generation implemented with conditional text logic for LSZ, PP (ČAS/KUSY), and CFZ protocols. Automatic empty table/row removal implemented.
 
 ## Running the Application
 
@@ -32,6 +32,7 @@ The application opens with a main menu offering two workflows:
 - **"📝 GENEROVAT WORD PROTOKOL" button** - Opens dialog to select project folder, Excel file, template, and generate Word protocol
 - **Auto-detection** - Word dialog automatically finds `measurement_data.json`, LSZ Excel, and suggests output path
 - **Validation** - Both workflows validate inputs and show error messages via QMessageBox
+- **ARES API integration** - Automatic company data lookup by IČO (Czech business registry)
 
 ## Development Commands
 
@@ -56,6 +57,12 @@ python generate_word_from_two_sources.py
 # Test conditional text generators
 python test_final_all_six_conditions.py
 
+# Test ARES API integration
+python test_ares_api.py
+
+# Test gender-based text generation
+python test_gender_implementation.py
+
 # Debug Excel reading
 python debug_excel.py
 
@@ -64,6 +71,9 @@ ls templates/excel/
 
 # View generated projects
 ls projects/
+
+# Debug 11th conditional text (hierarchical load evaluation)
+python debug_jedenacta_podminka.py
 ```
 
 ## Architecture
@@ -126,17 +136,43 @@ Main Menu → "Generovat Word Protokol" button
 
 ### Excel Template System
 Four Excel types supported:
-- **LSZ** (.xlsm with macros) - Local muscle load
-- **PP ČAS** (.xlsx) - Work positions by TIME
-- **PP KUSY** (.xlsx) - Work positions by PIECES
-- **CFZ** (.xlsx) - Overall physical load
+- **LSZ** (.xlsm with macros) - Local muscle load (lokální svalová zátěž)
+- **PP ČAS** (.xlsx) - Work positions by TIME (pracovní polohy - hodnocení času)
+- **PP KUSY** (.xlsx) - Work positions by PIECES (pracovní polohy - hodnocení kusů)
+- **CFZ** (.xlsx) - Overall physical load (celková fyzická zátěž)
 
 Each has different:
 - Field mappings in `excel_field_mappings.py`
 - Table mappings in `table_mappings.py` (sheet name, start row, columns)
+- Results readers: `read_lsz_results.py`, `read_pp_results.py` (CFZ pending)
 - The mappings are defined per-sheet and specify which JSON fields go to which cells
 
 ## Key Implementation Details
+
+### ARES API Integration
+The application integrates with the Czech business registry (ARES) for automatic company data lookup:
+- **Location:** `gui/pages.py` - `fetch_ares_data()` and `extract_company_data_from_ares()`
+- **Trigger:** When user enters IČO (company ID) in the wizard
+- **Auto-fills:** Company name, address, house number, city, city district, ZIP code
+- **Error handling:** Gracefully handles timeouts, 404 errors, and API failures
+- **URL:** `https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/{ico}`
+
+**Implementation:**
+```python
+def fetch_ares_data(ico: str) -> dict:
+    """Fetches company data from ARES API by IČO"""
+    ico_clean = ''.join(filter(str.isdigit, str(ico)))
+    url = f"https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/{ico_clean}"
+    response = requests.get(url, timeout=10)
+    return response.json() if response.status_code == 200 else None
+```
+
+### Gender-Based Text Generation
+Word protocols use gender-specific Czech grammar for proper text generation:
+- **Worker gender:** Stored in `measurement_data.json` as "Muž" or "Žena"
+- **Text generator:** `core/text_generator.py` contains gender-aware conditional text logic
+- **Usage:** Ensures grammatically correct Czech text in Word protocols (e.g., "byl měřen" vs "byla měřena")
+- **Filter:** Custom Jinja2 filter `czech_past_tense` for converting verbs based on gender
 
 ### Excel Handling with openpyxl
 - **Macros:** Only use `keep_vba=True` for `.xlsm` files (checked via `excel_path.suffix`)
@@ -173,6 +209,23 @@ projects/
 
 Folder names are sanitized (spaces→underscores, special chars removed) in `ProjectManager._sanitize_folder_name()`.
 
+### Sample Protocols
+The `sample_protocols/` directory contains reference Word templates organized by type:
+- **Autorizované protokoly pro MUŽE/** - Authorized male protocol templates
+- **Autorizované protokoly pro ŽENY/** - Authorized female protocol templates
+- **Jeden zaměstnanec/** - Single employee templates
+- **Odborné hodnocení - bezpohlavní/** - Gender-neutral expert evaluation templates
+- **protokoly v pdf/** - PDF versions of protocols
+
+**Note:** These are reference templates, not the active templates used for generation. Active templates are in `templates/`.
+
+### Temporary File Management
+The application handles temporary uploaded files automatically:
+- **Upload location:** Temporary files stored in system temp directory
+- **Cleanup:** `FileManager.cleanup_temp_uploads()` called on app exit via `atexit.register()`
+- **Registration:** Cleanup hook registered in `main.py` entry point
+- **Safety:** Ensures no temporary files are left behind after application closes
+
 ## JSON Data Structure
 
 ### measurement_data.json (Input Data)
@@ -187,7 +240,7 @@ The application uses a section-based JSON structure for GUI wizard data:
 
 See `measurement_data_example.json` for complete structure.
 
-### lsz_results.json (Results Data)
+### lsz_results.json (Results Data - LSZ Protocol)
 Contains calculated results from Excel files, read by `read_lsz_results.py`:
 - **Scalar values:** `Fmax_Phk_Extenzor`, `Fmax_Phk_Flexor`, `Fmax_Lhk_Extenzor`, `Fmax_Lhk_Flexor`
 - **Movement counts:** `phk_number_of_movements`, `lhk_number_of_movements`
@@ -198,11 +251,23 @@ Contains calculated results from Excel files, read by `read_lsz_results.py`:
   - `table_force_distribution` - Force distribution by muscle groups (21 rows)
   - `table_K27_N47` - Additional force data
 
+### pp_results.json (Results Data - PP Protocol)
+Contains working position analysis from Excel "Průměr" sheet, read by `read_pp_results.py`:
+- **Metadata:** `excel_type` ("PP_CAS" or "PP_KUSY"), `worker_count`, `what_is_evaluated`
+- **Body sections** (52 rows total across 6 sections):
+  - `trup` - Trunk positions (11 items)
+  - `hlava_krk` - Head and neck positions (10 items)
+  - `phk` - Right upper limb positions (8 items)
+  - `lhk` - Left upper limb positions (8 items)
+  - `dk` - Lower limbs positions (9 items)
+  - `ostatni` - Other body parts (6 items)
+- **Row structure:** Each row contains `nazev_polohy`, `typ_svalove_prace`, `vyskyt_min_a`, `vyskyt_min_b`, `prumer_min`, `typ_pracovni_polohy`
+
 **Critical:** Both JSONs are used together in Word generation:
 ```python
 context = {
     "input": measurement_data,   # From GUI
-    "results": results_data       # From Excel
+    "results": results_data       # From Excel (lsz_results.json or pp_results.json)
 }
 ```
 
@@ -239,10 +304,17 @@ context = {
 ### Pipeline Architecture
 The `WordProtocolPipeline` class orchestrates the complete generation process:
 1. Validates project folder (checks for `measurement_data.json`)
-2. Reads Excel file and extracts results using `read_lsz_results.py`
-3. Exports charts from Excel as image files
-4. Generates Word protocol using both JSONs and template
-5. Applies post-processing (holter highlighting)
+2. Detects protocol type (LSZ/PP_CAS/PP_KUSY/CFZ) from Excel filename
+3. Reads Excel file and extracts results:
+   - LSZ → `read_lsz_results.py` → `lsz_results.json`
+   - PP → `read_pp_results.py` → `pp_results.json` (52 rows from "Průměr" sheet)
+   - CFZ → Not yet implemented
+4. Exports charts from Excel as image files (LSZ only)
+5. Generates Word protocol using both JSONs and template
+6. Applies post-processing:
+   - Holter highlighting (LSZ)
+   - Red color highlighting for over-limit values
+   - Empty row/table removal (protocol-specific logic)
 
 ### Conditional Text System
 The application generates Word protocols with dynamic text based on measurement results. This is handled by `core/text_generator.py`:
@@ -292,27 +364,56 @@ context = {
 - Conditional texts: `{{ texts.druhy_text_podminka_limit1 }}`
 - Tables: `{% for row in results.table_somatometrie %}...{% endfor %}`
 
-### Holter Highlighting
-Post-processing step after Word generation:
+### Post-Processing Steps
+Multiple post-processing operations are applied after Word generation:
+
+**1. Holter Highlighting (LSZ only)**
 - Maps holter IDs (A-F) to holter numbers (60/16, 65/17, etc.)
 - Finds selected holters from measurement_data (worker A and B)
 - Bolds corresponding rows in the equipment table
 - Uses safe python-docx manipulation (not RichText in docxtpl)
 
+**2. Red Color Highlighting**
+- Highlights over-limit force values in red
+- Applied to force distribution tables
+
+**3. Empty Row/Table Removal (Protocol-Specific)**
+- **LSZ/CFZ:** `remove_empty_activity_rows()` - Removes rows where activity column is "0", "", or "None"
+  - Identifies tables by headings: "Výsledky měřených osob – počet pohybů", "síla % Fmax", "rozložení vynakládaných svalových sil"
+- **PP:** `remove_empty_pp_rows()` - Removes rows where ALL three values are 0: `vyskyt_min_a == 0 AND vyskyt_min_b == 0 AND prumer_min == 0`
+  - Identifies tables by headings: "TRUP", "HLAVA A KRK", "PHK", "LHK", "DOLNÍ KONČETINY", "OSTATNÍ ČÁSTI TĚLA"
+  - Additional feature: `remove_empty_pp_tables()` - Removes entire tables that contain only headers (no data rows)
+- Both functions use identical XML backend logic, differing only in conditional criteria
+- Both iterate rows backwards to avoid index shifting during deletion
+
 **Implementation:**
 ```python
-highlight_selected_holters(docx_path, selected_holter_numbers)
+# In generate_word_protocol_v2()
+highlight_selected_holters(output_path, selected_holter_numbers)
+highlight_red_colors(output_path)  # Force highlighting
+if protocol_type in ["PP_CAS", "PP_KUSY"]:
+    remove_empty_pp_rows(output_path)
+    remove_empty_pp_tables(output_path)
+else:
+    remove_empty_activity_rows(output_path)
 ```
 
+See `PP_EMPTY_ROWS_REMOVAL.md` for detailed PP removal documentation.
+
 ### Important Files for Word Generation
-- `core/word_protocol_pipeline.py` - Main pipeline class (integrated into GUI)
-- `gui/word_protocol_dialog.py` - GUI dialog for Word generation
-- `generate_word_from_two_sources.py` - Word generation script (called by pipeline)
-- `read_lsz_results.py` - Reads results data from Excel files
-- `core/text_generator.py` - All 11 conditional text generators
+- `core/word_protocol_pipeline.py` - Main pipeline class with protocol detection (integrated into GUI)
+- `gui/word_protocol_dialog.py` - GUI dialog for Word generation (supports multiple protocols)
+- `gui/word_protocol_dialog_v2.py` - Enhanced dialog with multi-protocol checkbox selection
+- `generate_word_from_two_sources.py` - Word generation script with post-processing (called by pipeline)
+- `read_lsz_results.py` - Reads LSZ results data from Excel files → `lsz_results.json`
+- `read_pp_results.py` - Reads PP results data from "Průměr" sheet → `pp_results.json`
+- `core/text_generator.py` - All 11 conditional text generators (LSZ-focused)
 - `WORD_PLACEHOLDERS_GUIDE.md` - Guide for two-JSON context structure
 - `TABLES_ANALYSIS.md` - Analysis of Excel table structures
 - `JEDENACTA_PODMINKA_DOKUMENTACE.md` - Documentation for 11th conditional text (hierarchical load evaluation)
+- `PP_IMPLEMENTATION_SUMMARY.md` - PP protocol implementation guide and testing instructions
+- `PP_EMPTY_ROWS_REMOVAL.md` - Documentation for PP empty row/table removal logic
+- `PP_RESULTS_USAGE_EXAMPLES.md` - Examples of using PP results in templates
 - Test scripts: `test_word_generation_integration.py`, `test_conditional_texts.py`, `test_jedenacta_text_podminka.py`, etc.
 
 ## Building Standalone EXE
@@ -362,12 +463,18 @@ See `JAK_VYTVORIT_EXE.md` for detailed build instructions and troubleshooting.
 - Force highlighting with red colors in Word output
 - **GUI integration of Word generation** (via WordProtocolGeneratorDialog)
 - **WordProtocolPipeline** for orchestrating complete generation workflow
+- **Protocol detection system** - Automatic LSZ/PP_CAS/PP_KUSY/CFZ detection from filename
+- **PP protocol support** - Complete PP Excel reading, results JSON generation, Word rendering
+- **Multi-protocol dialog** (word_protocol_dialog_v2.py) - Checkbox selection for generating multiple protocols
+- **Empty row/table removal** - Protocol-specific logic for cleaning Word output (LSZ vs PP)
 - Main menu with workflow selection
 - **PyInstaller build system** for standalone EXE distribution
 - **11th conditional text** (jedenacta_text_podminka) - hierarchical evaluation of all 4 muscle groups
 
 **Not Yet Implemented (see NEXT_STEPS_ANALYSIS.md):**
 - All 15 Word template variants (currently only test templates exist)
+- PP-specific conditional text generators (currently using stubs/placeholders)
+- CFZ protocol reader (`read_cfz_results.py`) - CFZ Excel reading not yet implemented
 - PDF export from Word protocols
 - Loading existing projects for editing
 - Unit tests
@@ -401,14 +508,29 @@ When modifying:
 - **Application entry point:** `main.py` launches `MainMenuWindow` which presents two workflow options
 - **Workflows:** The app has two independent workflows - Excel generation (wizard) and Word generation (dialog)
 - **Excel mappings:** Remember different Excel types have different sheet names and layouts
+- **Results readers:** Each protocol type requires its own reader (LSZ: read_lsz_results.py, PP: read_pp_results.py, CFZ: pending)
+- **Protocol detection:** Pipeline auto-detects protocol type from Excel filename (LSZ/PP_CAS/PP_KUSY/CFZ pattern)
 - **Table copying:** Each Excel type requires specific handling (macros, unit conversions, calculated fields)
 - **GUI changes:** The wizard generates JSON on "Finish" - ensure new fields are captured in the correct section
 - **Path handling:** Use `pathlib.Path` throughout (already established pattern)
 - **Error handling:** Word generation dialog uses QMessageBox for errors; wizard still prints to console
 - **Word templates:** Use two-JSON context (`input` and `results`) to separate GUI data from calculated results
-- **Conditional texts:** All 11 conditional text generators are in `text_generator.py` - modify there for text logic changes
+- **Conditional texts:** All 11 conditional text generators are in `text_generator.py` - currently LSZ-focused, PP uses stubs
+- **Post-processing:** Empty row removal logic differs by protocol type (LSZ vs PP) - see `remove_empty_activity_rows()` vs `remove_empty_pp_rows()`
 - **File uploads:** Temporary files are managed by `FileManager` and cleaned up on app exit (via atexit hook)
 - **Word pipeline:** `WordProtocolPipeline` orchestrates the complete generation - modify here to change the workflow
+- **ARES integration:** Company data lookup is in `gui/pages.py` - modify for additional fields or different APIs
+- **Czech language:** Gender-based text generation requires careful handling of Czech grammar rules
+
+## Platform Requirements
+
+**Operating System:**
+- **Primary:** Windows (due to pywin32, xlwings, and COM automation)
+- **Compatibility:** Code uses `pathlib` for cross-platform paths, but Excel chart export requires Windows + Excel
+
+**External Dependencies:**
+- **Microsoft Excel:** Required for xlwings chart export functionality
+- **Internet connection:** Optional, only for ARES API company lookup
 
 ## Testing Strategy
 
@@ -433,6 +555,9 @@ python main.py
 - `test_all_seven_conditions.py` - Tests seven conditional texts
 - `test_subdoc_integration.py` - Subdocument integration tests
 - `test_force_highlighting.py` - Tests force highlighting in Word tables
+- `test_ares_api.py` - Tests ARES API integration for company data lookup
+- `test_gender_implementation.py` - Tests gender-based Czech text generation
+- `test_czech_filter.py` - Tests Czech language filters for Jinja2 templates
 - `debug_excel.py` - Excel reading and debugging
 - `create_simple_test.py` - Creates simple test Word documents
 - `verify_red_colors.py` - Verifies red color highlighting in Word output
@@ -453,10 +578,14 @@ PyQt6>=6.6.0          # GUI framework
 openpyxl>=3.1.0       # Excel manipulation (supports .xlsm macros with keep_vba=True)
 python-docx>=1.1.0    # Word document reading/manipulation
 docxtpl>=0.16.0       # Word template rendering with Jinja2
-xlwings>=0.30.0       # Excel automation (if needed for advanced features)
+xlwings>=0.30.0       # Excel automation for chart export (requires Excel installation)
+Pillow>=10.0.0        # Image processing
+pywin32>=305          # Windows-specific functionality (COM automation)
+requests>=2.31.0      # HTTP requests (for ARES API)
 ```
 
 **Important notes:**
 - **openpyxl limitation:** Data Validation (dropdowns) is lost when saving - this is a known library limitation
 - **docxtpl with tables:** Use post-processing with python-docx for complex table formatting (RichText in tables is risky)
 - **xlwings:** Requires Excel installation, use only if openpyxl can't handle the task
+- **pywin32:** Windows-only dependency for COM automation

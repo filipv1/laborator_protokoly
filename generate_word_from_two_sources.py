@@ -393,6 +393,10 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
     # Slouč do jedné úrovně
     context = {**input_data, **results_data}
 
+    # Přidat alias 'texts' pro section_generated_texts (pro kompatibilitu s šablonami)
+    if "section_generated_texts" in context:
+        context["texts"] = context["section_generated_texts"]
+
     # Načti cestu k Word souboru z JSON
     copied_docx_path = input_data.get("section1_uploaded_docx", {}).get("copied_file_path")
 

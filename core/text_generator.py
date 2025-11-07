@@ -732,28 +732,371 @@ def _calculate_jedenacta_text_podminka(results_data: Dict[str, Any]) -> str:
         return "1"
 
 
-def generate_conditional_texts(measurement_data: Dict[str, Any], results_data: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+def _calculate_pp_work_shift_coefficient(work_duration_min: int) -> float:
+    """
+    Vypočítá koeficient přepočtu pro nestandardní délky směn podle NV 361/2007, Tabulka č.8.
+
+    Standardní směna: 480 min → koeficient = 1.0
+    Každých 30 min navíc → +0.025 (max 1.2 při >689 min)
+    Každých 30 min méně → -0.025 (min 0.8 při <270 min)
+
+    Args:
+        work_duration_min: Délka směny v minutách
+
+    Returns:
+        Koeficient přepočtu (0.8 - 1.2)
+
+    Příklady:
+        >>> _calculate_pp_work_shift_coefficient(480)
+        1.0
+        >>> _calculate_pp_work_shift_coefficient(510)  # +30 min
+        1.05
+        >>> _calculate_pp_work_shift_coefficient(450)  # -30 min
+        0.975
+    """
+    if work_duration_min == 480:
+        return 1.0
+
+    difference = work_duration_min - 480
+
+    # Vypočítej interval podle tabulky:
+    # První rozsah (481-509 nebo 450-479) = 1-29 min rozdílu
+    # Další rozsahy po 30 minutách (510-539, 420-449, atd.)
+    if difference > 0:  # Delší směna
+        if difference < 30:
+            intervals = 1  # 481-509
+        else:
+            intervals = ((difference - 30) // 30) + 2  # 510-539, 540-569, ...
+        coef = 1.0 + (intervals * 0.025)
+        return min(coef, 1.2)  # Max cap na 1.2
+    else:  # Kratší směna
+        abs_diff = abs(difference)
+        # Pro kratší směny jsou všechny rozsahy 30 minut (symetrické)
+        intervals = ((abs_diff - 1) // 30) + 1  # 1-30→1, 31-60→2, 61-90→3, ...
+        coef = 1.0 - (intervals * 0.025)
+        return max(coef, 0.8)  # Min floor na 0.8
+
+
+def _calculate_pp_category_limits(coefficient: float) -> Dict[str, Any]:
+    """
+    Vypočítá limitní hodnoty pro kategorie pracovních poloh (PP a N) s aplikovaným koeficientem.
+
+    Base limity pro směnu 480 min:
+    - PP: kategorie 1 (<100 min), kategorie 2 (101-160 min), kategorie 3 (>160 min)
+    - N:  kategorie 1 (<20 min),  kategorie 2 (21-30 min),   kategorie 3 (>30 min)
+
+    Args:
+        coefficient: Koeficient přepočtu (z _calculate_pp_work_shift_coefficient)
+
+    Returns:
+        Dictionary s limitními hodnotami (celá čísla minut):
+        {
+            "pp_kat1_min": 0,
+            "pp_kat1_max": 100,  # × coefficient
+            "pp_kat2_min": 101,
+            "pp_kat2_max": 160,  # × coefficient
+            "pp_kat3_min": 161,
+            "n_kat1_min": 0,
+            "n_kat1_max": 20,    # × coefficient
+            "n_kat2_min": 21,
+            "n_kat2_max": 30,    # × coefficient
+            "n_kat3_min": 31
+        }
+
+    Příklad:
+        >>> _calculate_pp_category_limits(1.05)  # Směna 510 min
+        {"pp_kat1_max": 105, "pp_kat2_max": 168, ...}
+    """
+    # Base limity pro standardní směnu (480 min)
+    pp_base = [100, 160]
+    n_base = [20, 30]
+
+    # Aplikovat koeficient a zaokrouhlit matematicky
+    pp_limit1 = _math_round(pp_base[0] * coefficient)
+    pp_limit2 = _math_round(pp_base[1] * coefficient)
+    n_limit1 = _math_round(n_base[0] * coefficient)
+    n_limit2 = _math_round(n_base[1] * coefficient)
+
+    return {
+        # PP kategorie
+        "pp_kat1_min": 0,
+        "pp_kat1_max": pp_limit1,
+        "pp_kat2_min": pp_limit1 + 1,
+        "pp_kat2_max": pp_limit2,
+        "pp_kat3_min": pp_limit2 + 1,
+        # Kategorie 3 nemá max (> pp_kat3_min)
+
+        # N kategorie
+        "n_kat1_min": 0,
+        "n_kat1_max": n_limit1,
+        "n_kat2_min": n_limit1 + 1,
+        "n_kat2_max": n_limit2,
+        "n_kat3_min": n_limit2 + 1,
+        # Kategorie 3 nemá max (> n_kat3_min)
+    }
+
+
+def _format_pp_position_name(typ_svalove_prace: str, nazev_polohy: str) -> str:
+    """
+    Formátuje název polohy pro výstupní text (lowercase).
+
+    Args:
+        typ_svalove_prace: "Dynamická" nebo "Statická"
+        nazev_polohy: "Předklon trupu..." atd.
+
+    Returns:
+        Formátovaný string: "dynamické předklon trupu..."
+    """
+    # Převést typ svalové práce na lowercase
+    if typ_svalove_prace and isinstance(typ_svalove_prace, str):
+        typ_lower = typ_svalove_prace.lower()
+        # "dynamická"/"dynamicka" → "dynamické", "statická"/"staticka" → "statické"
+        if "dynamick" in typ_lower:
+            typ_formatted = "dynamické"
+        elif "statick" in typ_lower:
+            typ_formatted = "statické"
+        else:
+            typ_formatted = typ_lower
+    else:
+        typ_formatted = ""
+
+    # Převést název polohy na lowercase (první písmeno)
+    if nazev_polohy and isinstance(nazev_polohy, str):
+        nazev_lower = nazev_polohy[0].lower() + nazev_polohy[1:] if len(nazev_polohy) > 0 else ""
+    else:
+        nazev_lower = ""
+
+    # Spojit
+    if typ_formatted and nazev_lower:
+        return f"{typ_formatted} {nazev_lower}"
+    elif nazev_lower:
+        return nazev_lower
+    else:
+        return "neznámá poloha"
+
+
+def _calculate_prvni_pp_podminka_kategorie(
+    results_data: Dict[str, Any],
+    category_limits: Dict[str, Any]
+) -> str:
+    """
+    První PP podmínka: Kategorizace pracovních poloh podle času v průměru.
+
+    Projde všechny sekce (trup, hlava_krk, phk, lhk, dk, ostatni) a pro každý řádek
+    určí kategorii (1, 2, nebo 3) podle prumer_min a typ_pracovni_polohy.
+
+    Logika:
+    - Pokud VŠECHNY polohy jsou kategorie 1 → text kategorie 1
+    - Pokud ALESPOŇ JEDNA je kategorie 2 (ale žádná 3) → text kategorie 2 + výčet
+    - Pokud ALESPOŇ JEDNA je kategorie 3 → text kategorie 3 + výčet
+
+    Args:
+        results_data: pp_results.json s daty o polohách
+        category_limits: Dictionary s limity kategorií (pp_kat1_max, n_kat1_max, atd.)
+
+    Returns:
+        Text podle nejvyšší nalezené kategorie
+    """
+    # Sekce které obsahují data o polohách
+    sections = ["trup", "hlava_krk", "phk", "lhk", "dk", "ostatni"]
+
+    max_category = 1  # Začínáme s kategorií 1 (optimisticky)
+
+    # Sbírat problematické polohy
+    category_2_problems = {"PP": [], "N": []}  # Překročily kat1 (jsou kat2+)
+    category_3_problems = {"PP": [], "N": []}  # Překročily kat2 (jsou kat3)
+
+    # Projít všechny sekce
+    for section_name in sections:
+        section = results_data.get(section_name, [])
+
+        # Zkontrolovat, jestli je sekce list nebo dict
+        if isinstance(section, list):
+            # pp_results.json má sekce jako array
+            items = section
+        elif isinstance(section, dict):
+            # Fallback pro dict strukturu (numeric string keys)
+            items = section.values()
+        else:
+            continue
+
+        # Projít všechny řádky v sekci
+        for row_data in items:
+            if not isinstance(row_data, dict):
+                continue
+
+            prumer_min = row_data.get("prumer_min", 0)
+            typ = row_data.get("typ_pracovni_polohy", "N")
+            typ_svalove_prace = row_data.get("typ_svalove_prace", "")
+            nazev_polohy = row_data.get("nazev_polohy", "")
+
+            # Skip pokud je prumer_min 0, null nebo prázdný (nenaměřená poloha)
+            if prumer_min == 0 or prumer_min is None:
+                continue
+
+            # Určit kategorii podle typu a limitů
+            if typ == "PP":
+                if prumer_min <= category_limits["pp_kat1_max"]:
+                    category = 1
+                elif prumer_min <= category_limits["pp_kat2_max"]:
+                    category = 2
+                else:
+                    category = 3
+            else:  # typ == "N"
+                if prumer_min <= category_limits["n_kat1_max"]:
+                    category = 1
+                elif prumer_min <= category_limits["n_kat2_max"]:
+                    category = 2
+                else:
+                    category = 3
+
+            # Update max kategorie (priorita: 3 > 2 > 1)
+            if category > max_category:
+                max_category = category
+
+            # Sbírat problematické polohy
+            if category >= 2:  # Překročily kat1
+                formatted_name = _format_pp_position_name(typ_svalove_prace, nazev_polohy)
+                category_2_problems[typ].append(formatted_name)
+
+            if category == 3:  # Překročily kat2
+                formatted_name = _format_pp_position_name(typ_svalove_prace, nazev_polohy)
+                category_3_problems[typ].append(formatted_name)
+
+    # Vygenerovat text podle max kategorie
+    if max_category == 1:
+        return "Celková doba zaujímání nepřijatelných pracovních poloh a podmíněně přijatelných poloh nepřekročila v průměru přípustný limit kategorie 1."
+
+    elif max_category == 2:
+        # Použít category_2_problems
+        has_pp = len(category_2_problems["PP"]) > 0
+        has_n = len(category_2_problems["N"]) > 0
+
+        # Spojit všechny problematické polohy
+        all_problems = category_2_problems["PP"] + category_2_problems["N"]
+        problems_text = ", ".join(all_problems)
+
+        # Vybrat šablonu
+        if has_pp and has_n:
+            # Obě
+            return f"Celková doba zaujímání nepřijatelných pracovních poloh a podmíněně přijatelných poloh překročila v průměru přípustný limit kategorie 1 pro {problems_text}."
+        elif has_pp:
+            # Jen PP
+            return f"Celková doba zaujímání podmíněně přijatelných poloh překročila v průměru přípustný limit kategorie 1 pro {problems_text}."
+        else:  # has_n
+            # Jen N
+            return f"Celková doba zaujímání nepřijatelných pracovních poloh překročila v průměru přípustný limit kategorie 1 pro {problems_text}."
+
+    else:  # max_category == 3
+        # Použít category_3_problems
+        has_pp = len(category_3_problems["PP"]) > 0
+        has_n = len(category_3_problems["N"]) > 0
+
+        # Spojit všechny problematické polohy
+        all_problems = category_3_problems["PP"] + category_3_problems["N"]
+        problems_text = ", ".join(all_problems)
+
+        # Vybrat šablonu (stejná jako kat2, jen "kategorie 2" místo "kategorie 1")
+        if has_pp and has_n:
+            # Obě
+            return f"Celková doba zaujímání nepřijatelných pracovních poloh a podmíněně přijatelných poloh překročila v průměru přípustný limit kategorie 2 pro {problems_text}."
+        elif has_pp:
+            # Jen PP
+            return f"Celková doba zaujímání podmíněně přijatelných poloh překročila v průměru přípustný limit kategorie 2 pro {problems_text}."
+        else:  # has_n
+            # Jen N
+            return f"Celková doba zaujímání nepřijatelných pracovních poloh překročila v průměru přípustný limit kategorie 2 pro {problems_text}."
+
+
+def generate_conditional_texts(
+    measurement_data: Dict[str, Any],
+    results_data: Optional[Dict[str, Any]] = None,
+    protocol_type: str = "LSZ"
+) -> Dict[str, str]:
     """
     Vygeneruje podmínkové texty na základě dat z measurement_data.json a results_data.
+    Podporuje LSZ, PP a CFZ protokoly.
 
     Args:
         measurement_data: Data z measurement_data.json (celý JSON)
-        results_data: Data z lsz_results.json (celý JSON), volitelné
+        results_data: Data z results JSON (lsz_results.json nebo pp_results.json), volitelné
+        protocol_type: Typ protokolu ("LSZ", "PP_CAS", "PP_KUSY", "CFZ")
 
     Returns:
         Dictionary s vygenerovanými texty:
         {
             "prvni_text_podminka_pocetdni": "...",
-            "druhy_text_podminka_limit1": "...",
-            "treti_text_podminka_limit1": "...",
-            "ctvrty_text_podminka": "...",
-            "paty_text_podminka": "...",
-            "sesty_text_podminka": "...",
-            "sedmy_text_podminka": "...",
-            "osmy_text_podminka": "...",
-            "devata_text_podminka": {...}  (dictionary s hodnotami tabulky)
+            "druhy_text_podminka_limit1": "...",  (LSZ-specific)
+            ... další podmínkové texty podle protokolu
         }
     """
+    texts = {}
+
+    # Pro PP protokoly: použij stub implementaci (zatím jen prvni_text_podminka)
+    if protocol_type in ("PP_CAS", "PP_KUSY"):
+        print(f"Generuji PP podminkove texty (stub)")
+        # PP má jen generickou prvni_text_podminka
+        section0 = measurement_data.get("section0_file_selection", {})
+        section2 = measurement_data.get("section2_firma", {})
+        measurement_days = section2.get("measurement_days", 1)
+        gender = section0.get("workers_gender", "muži")
+        worker_count = section0.get("worker_count", 2)
+
+        prvni_text_varianty = {
+            (1, 1, "muži"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřen byl 1 pracovník – muž.",
+            (1, 1, "ženy"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřena byla 1 pracovnice – žena.",
+            (2, 1, "muži"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřen byl 1 pracovník – muž.",
+            (2, 1, "ženy"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřena byla 1 pracovnice – žena.",
+            (1, 2, "muži"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřeni byli 2 pracovníci – muži.",
+            (1, 2, "ženy"): "Měření probíhalo v jednom dni, v jedné průměrné směně. Měřeny byly 2 pracovnice – ženy.",
+            (2, 2, "muži"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřeni byli 2 pracovníci – muži.",
+            (2, 2, "ženy"): "Měření probíhalo ve dvou dnech, ve dvou průměrných směnách. Měřeny byly 2 pracovnice – ženy.",
+        }
+
+        texts["prvni_text_podminka_pocetdni"] = prvni_text_varianty.get(
+            (measurement_days, worker_count, gender),
+            prvni_text_varianty[(1, 2, "muži")]
+        )
+
+        # PP PODMÍNKA: Limitní hodnoty kategorií podle délky směny
+        # Načíst z section4_worker_a.work_duration (STRING -> int)
+        section4 = measurement_data.get("section4_worker_a", {})
+        work_duration_str = section4.get("work_duration")
+
+        if work_duration_str:
+            work_duration_min = int(work_duration_str)
+        else:
+            work_duration_min = 480  # Fallback na standard
+
+        # Vypočítat koeficient a kategoriální limity
+        coefficient = _calculate_pp_work_shift_coefficient(work_duration_min)
+        category_limits = _calculate_pp_category_limits(coefficient)
+
+        # Přidat limity do texts (pro zobrazení v Word a pro další výpočty)
+        texts.update(category_limits)
+
+        # Debug vypis
+        print(f"  PP smena: {work_duration_min} min -> koeficient: {coefficient:.3f}")
+        print(f"  PP limity: kat1 0-{category_limits['pp_kat1_max']}, kat2 {category_limits['pp_kat2_min']}-{category_limits['pp_kat2_max']}, kat3 >{category_limits['pp_kat3_min']}")
+        print(f"  N limity: kat1 0-{category_limits['n_kat1_max']}, kat2 {category_limits['n_kat2_min']}-{category_limits['n_kat2_max']}, kat3 >{category_limits['n_kat3_min']}")
+
+        # PP PODMÍNKA: Kategorizace pracovních poloh
+        if results_data is not None:
+            texts["prvni_pp_podminka_kategorie"] = _calculate_prvni_pp_podminka_kategorie(
+                results_data,
+                category_limits
+            )
+            print(f"  PP kategorizace: {texts['prvni_pp_podminka_kategorie'][:50].encode('ascii', 'replace').decode('ascii')}...")
+        else:
+            texts["prvni_pp_podminka_kategorie"] = "PP results data not available"
+            print("  [WARNING] PP kategorizace preskocena - results_data is None")
+
+        # PP-specific stub texty (další podmínky budou implementovány později)
+        texts["pp_placeholder_text"] = "PP conditional texts - TODO"
+
+        return texts
+
+    # Pro LSZ: použij existující implementaci (níže)
     texts = {}
 
     # PODMÍNKA 1: Počet dnů měření + pohlaví + počet pracovníků
