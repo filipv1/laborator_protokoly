@@ -201,13 +201,26 @@ Word protocols use gender-specific Czech grammar for proper text generation:
 
 The universal `copy_time_schedule()` method dispatches to the correct handler based on `excel_type` parameter.
 
-### Word Document Parsing
-`DocxParser.parse_time_schedule_table()`:
+### Word Document Parsing (v2.0.0 - Flexibilní načítání)
+`DocxParser.parse_time_schedule_table()` - **NOVĚ s flexibilním načítáním:**
+- **Fuzzy matching** - Rozpozná různé názvy sloupců ("Činnost", "Popis práce", "Operace")
+- **Funguje s chybějícími sloupci** - Načte tabulku i když chybí "Čas" nebo "Počet kusů"
+- **Artificiální doplnění** - Chybějící sloupce → `None` hodnoty (editovatelné v GUI)
+- **Debug výpisy** - Zobrazí co bylo detekováno v konzoli
+- **Vyžaduje pouze "Činnost"** - Řádek bez činnosti se přeskočí
 - Expects the second table (index 1) in the Word document
 - Parses max 20 rows (or 30 for PP variants)
 - Returns structured dict: `{"line1": {...}, "line2": {...}, ..., "total": {...}}`
 - Handles "Celkem" (total) row detection
 - Returns empty structure if parsing fails
+- **Backward compatible** - Existující projekty fungují beze změn
+
+**Podporované varianty názvů:**
+- Činnost: "činnost", "operace", "popis", "práce", "aktivita"
+- Čas: "čas", "time", "min", "minut", "trvání", "doba"
+- Počet kusů: "počet", "kusy", "pieces", "ks", "count"
+
+**Viz podrobná dokumentace:** `FLEXIBLE_TABLE_PARSING.md`
 
 ### Project Structure
 Generated projects follow this pattern:

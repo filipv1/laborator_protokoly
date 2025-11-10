@@ -4,15 +4,133 @@ DOCX Parser - parsování Word dokumentů
 from pathlib import Path
 from typing import Dict, Any, Optional
 from docx import Document
+import unicodedata
+import re
 
 
 class DocxParser:
     """Parsování Word dokumentů pro získání tabulek"""
 
+    # Vzory pro detekci sloupců (různé varianty názvů)
+    COLUMN_PATTERNS = {
+        "number": ["č.", "číslo", "number", "#", "pořadí", "por.", "c."],
+        "operation": ["činnost", "operace", "operation", "popis", "práce", "aktivita", "cinnost"],
+        "time_min": ["čas", "time", "min", "minut", "trvání", "doba", "cas"],
+        "pieces_count": ["počet", "kusy", "pieces", "ks", "count", "množství", "pocet", "mnozstvi"]
+    }
+
+    @staticmethod
+    def _normalize_column_name(name: str) -> str:
+        """
+        Normalizuje název sloupce pro matching.
+
+        - Převede na lowercase
+        - Odstraní diakritiku
+        - Odstraní speciální znaky (závorky, čárky, atd.)
+        - Redukuje mezery
+
+        Args:
+            name: Původní název sloupce
+
+        Returns:
+            Normalizovaný název
+        """
+        if not name:
+            return ""
+
+        # Lowercase
+        name = name.lower()
+
+        # Odstraň diakritiku (č→c, š→s, atd.)
+        name = ''.join(
+            c for c in unicodedata.normalize('NFD', name)
+            if unicodedata.category(c) != 'Mn'
+        )
+
+        # Odstraň speciální znaky, nech jen písmena, čísla, mezery
+        name = re.sub(r'[^a-z0-9\s]', '', name)
+
+        # Redukuj vícenásobné mezery
+        name = re.sub(r'\s+', ' ', name)
+
+        return name.strip()
+
+    @staticmethod
+    def _detect_column_mapping(header_cells) -> Dict[str, Optional[int]]:
+        """
+        Detekuje mapování column_type → column_index podle názvů v headeru.
+
+        Args:
+            header_cells: Buňky z header řádku tabulky
+
+        Returns:
+            Dictionary: {"number": 0, "operation": 1, "time_min": 2, "pieces_count": None}
+            None znamená, že sloupec nebyl nalezen
+        """
+        column_map = {
+            "number": None,
+            "operation": None,
+            "time_min": None,
+            "pieces_count": None
+        }
+
+        # Normalizuj názvy všech header sloupců
+        header_names = [DocxParser._normalize_column_name(cell.text) for cell in header_cells]
+
+        # Track které sloupce už byly přiřazeny (aby se neopakovaly)
+        assigned_indices = set()
+
+        # Pro každý typ sloupce zkus najít match v headeru
+        # Prioritní pořadí: operation > time_min > pieces_count > number
+        priority_order = ["operation", "time_min", "pieces_count", "number"]
+
+        for col_type in priority_order:
+            patterns = DocxParser.COLUMN_PATTERNS[col_type]
+
+            for idx, header_name in enumerate(header_names):
+                if idx in assigned_indices:
+                    continue  # Tento sloupec už byl přiřazen
+
+                # Zkontroluj jestli header obsahuje nějaký z patternů
+                for pattern in patterns:
+                    # Přesnější matching - pattern musí být substring headeru
+                    # NEBO header musí být substring patternu (pro krátké zkratky)
+                    if (pattern in header_name) or (len(pattern) <= 3 and header_name.startswith(pattern)):
+                        column_map[col_type] = idx
+                        assigned_indices.add(idx)
+                        break
+
+                if column_map[col_type] is not None:
+                    break  # Našli jsme match pro tento typ, přejdi na další
+
+        return column_map
+
+    @staticmethod
+    def _safe_get_cell_value(cells, column_index: Optional[int]) -> Optional[str]:
+        """
+        Bezpečně získá hodnotu buňky.
+
+        Args:
+            cells: Seznam buněk z řádku
+            column_index: Index sloupce (může být None)
+
+        Returns:
+            Text z buňky nebo None pokud index neexistuje
+        """
+        if column_index is None or column_index >= len(cells):
+            return None
+        return cells[column_index].text.strip()
+
     @staticmethod
     def parse_time_schedule_table(docx_path: str) -> Dict[str, Any]:
         """
         Naparsuje tabulku "Časové rozložení pracovní směny" z Word dokumentu.
+
+        FLEXIBILNÍ NAČÍTÁNÍ:
+        - Detekuje sloupce podle názvů v headeru (fuzzy matching)
+        - Funguje i když některé sloupce chybí (time_min, pieces_count)
+        - Vyžaduje pouze sloupec "Činnost" (operation)
+        - Fallback na default pořadí pokud header nelze detekovat
 
         Args:
             docx_path: Cesta k .docx souboru
@@ -30,37 +148,69 @@ class DocxParser:
             # Tabulka 1 = informační (místo měření, datum, ...)
             # Tabulka 2 = časové rozložení
             if len(doc.tables) < 2:
-                print(f"Varování: Dokument má méně než 2 tabulky")
+                print(f"⚠ Varování: Dokument má méně než 2 tabulky")
                 return DocxParser._get_empty_time_schedule()
 
             table = doc.tables[1]  # Druhá tabulka (index 1)
 
+            if len(table.rows) == 0:
+                print(f"⚠ Varování: Tabulka je prázdná")
+                return DocxParser._get_empty_time_schedule()
+
+            # KROK 1: Detekuj mapování sloupců z headeru
+            header_cells = table.rows[0].cells
+            column_map = DocxParser._detect_column_mapping(header_cells)
+
+            # Fallback na default pořadí pokud žádný sloupec nebyl detekován
+            if all(v is None for v in column_map.values()):
+                print(f"⚠ Varování: Nepodařilo se detekovat názvy sloupců, používám default pořadí")
+                print(f"   Předpokládám: [Č., Činnost, Čas, Počet kusů]")
+                column_map = {
+                    "number": 0,
+                    "operation": 1,
+                    "time_min": 2 if len(header_cells) > 2 else None,
+                    "pieces_count": 3 if len(header_cells) > 3 else None
+                }
+
+            # Debug výpis detekovaných sloupců
+            print(f"✓ Detekované sloupce v časovém snímku:")
+            print(f"   • Činnost: sloupec {column_map['operation']}" if column_map['operation'] is not None else "   ⚠ Činnost: NENALEZENA")
+            print(f"   • Čas: sloupec {column_map['time_min']}" if column_map['time_min'] is not None else "   ⚠ Čas: chybí (bude None)")
+            print(f"   • Počet kusů: sloupec {column_map['pieces_count']}" if column_map['pieces_count'] is not None else "   ⚠ Počet kusů: chybí (bude None)")
+
+            # Validace: operation MUSÍ být detekována
+            if column_map['operation'] is None:
+                print(f"❌ CHYBA: Sloupec 'Činnost' nebyl nalezen! Tabulka se nenačte.")
+                return DocxParser._get_empty_time_schedule()
+
+            # KROK 2: Načti data řádek po řádku
             result = {}
             total_row = None
-
-            # Projdi řádky tabulky (přeskoč header)
             row_count = 0
+
             for i, row in enumerate(table.rows):
                 if i == 0:  # Přeskoč header
                     continue
 
                 cells = row.cells
-                if len(cells) < 4:
-                    continue
 
-                # Získej text z buněk
-                number = cells[0].text.strip()
-                operation = cells[1].text.strip()
-                time_text = cells[2].text.strip()
-                pieces_text = cells[3].text.strip()
+                # Získej hodnoty podle detekovaného mapování
+                number = DocxParser._safe_get_cell_value(cells, column_map['number'])
+                operation = DocxParser._safe_get_cell_value(cells, column_map['operation'])
+                time_text = DocxParser._safe_get_cell_value(cells, column_map['time_min'])
+                pieces_text = DocxParser._safe_get_cell_value(cells, column_map['pieces_count'])
 
                 # Detekuj řádek "Celkem"
-                if "celkem" in number.lower() or "celkem" in operation.lower():
+                if (number and "celkem" in number.lower()) or (operation and "celkem" in operation.lower()):
                     total_row = {
-                        "time_min": DocxParser._parse_number(time_text),
-                        "pieces_count": DocxParser._parse_number(pieces_text)
+                        "time_min": DocxParser._parse_number(time_text) if time_text else None,
+                        "pieces_count": DocxParser._parse_number(pieces_text) if pieces_text else None
                     }
                     continue
+
+                # VALIDACE: operation MUSÍ existovat
+                if not operation:
+                    continue  # Přeskoč prázdný řádek
 
                 # Normální řádek
                 row_count += 1
@@ -68,10 +218,10 @@ class DocxParser:
                     break
 
                 result[f"line{row_count}"] = {
-                    "number": number,
+                    "number": number or "",
                     "operation": operation,
-                    "time_min": DocxParser._parse_number(time_text),
-                    "pieces_count": DocxParser._parse_number(pieces_text)
+                    "time_min": DocxParser._parse_number(time_text) if time_text else None,
+                    "pieces_count": DocxParser._parse_number(pieces_text) if pieces_text else None
                 }
 
             # Doplň prázdné řádky do 20
@@ -89,10 +239,14 @@ class DocxParser:
             else:
                 result["total"] = {"time_min": None, "pieces_count": None}
 
+            print(f"✓ Načteno {row_count} řádků z časového snímku")
+
             return result
 
         except Exception as e:
-            print(f"Chyba při parsování Word dokumentu: {e}")
+            print(f"❌ Chyba při parsování Word dokumentu: {e}")
+            import traceback
+            traceback.print_exc()
             return DocxParser._get_empty_time_schedule()
 
     @staticmethod
