@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_data_files
 
-datas = [('templates', 'templates'), ('config', 'config')]
+datas = [('templates', 'templates'), ('config', 'config'), ('sample_protocols', 'sample_protocols')]
 datas += collect_data_files('docxcompose')
 datas += collect_data_files('docxtpl')
 

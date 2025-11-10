@@ -1,0 +1,54 @@
+PATH HANDLING ANALYSIS - LABORATO5
+
+KLÍČOVÉ ZJIŠTĚNÍ:
+
+1. TEMPLATES (Excel) - SPRÁVNĚ ✅
+   - core/project_manager.py:22 - Path(__file__).parent.parent / templates
+   - V build: _internal/templates/excel/ - 4 soubory OK
+
+2. PROJECTS FOLDER - PROBLÉM ⚠️
+   - core/file_manager.py:14 - HARDCODED Path('projects/_temp/uploads') ❌
+   - gui/word_protocol_dialog.py - 'projects' hardcoded v 3 místech ⚠️
+
+3. VZOROVÉ PROTOKOLY - KRITICKÉ ❌
+   - NEJSOU zabaleny v EXE!
+   - build_exe.bat se snaží xcopy, ale diakritka selhává
+   - Dialog hledá soubory v dist/LABORATO5/Vzorové protokoly/ - NEEXISTUJE
+   - Dopad: Word generation workflow v EXE selže
+
+4. PYINSTALLER - ČÁSTEČNĚ
+   - sys.frozen detekce OK
+   - Ale Vzorové protokoly nejsou v datas
+   - LABORATO5.spec obsahuje jen templates a config
+
+ŘEŠENÍ - PRIORITA:
+
+PRIORITY 1: Vzorové protokoly
+   - Přejmenovat na 'sample_protocols' (bez diakritiky)
+   - Přidat do build_exe.bat: --add-data 'sample_protocols;sample_protocols'
+
+PRIORITY 2: FileManager
+   - Nahradit hardcoded 'projects' za Path(__file__).parent.parent / 'projects'
+
+PRIORITY 3: Dialog paths
+   - Vytvořit helper: _get_projects_dir() s dynamickou rezolucí
+
+BUILD STRUKTURA - AKTUÁLNÍ:
+   dist/LABORATO5_DEBUG/
+   ├── .exe (90 MB)
+   ├── _internal/ (700+ MB)
+   │   ├── templates/excel/ ✅ (4 soubory)
+   │   └── config/ ✅ (3 soubory)
+   ├── projects/ ✅ (prázdný)
+   └── Vzorové protokoly/ ❌ CHYBÍ! (mělo by být 20+ .docx)
+
+SOUBORY VYŽADUJÍCÍ ZMĚNU:
+   1. core/file_manager.py - Hardcoded path
+   2. gui/word_protocol_dialog.py - Hardcoded paths
+   3. build_exe.bat - Přejmenovat a přidat datas
+   4. LABORATO5.spec - Přidat sample_protocols do datas
+
+DŮKAZ SELHÁNÍ - V BUILD:
+   Total .docx files: 3 (ze zdrojových dat)
+   Expected: 20+ (z Vzorové protokoly/)
+   Result: Žádné Word šablony v EXE!

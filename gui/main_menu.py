@@ -118,9 +118,10 @@ class MainMenuWindow(QMainWindow):
     def _open_word_generator(self):
         """Otevře dialog pro Word generation"""
         try:
-            from gui.word_protocol_dialog import WordProtocolGeneratorDialog
+            # NOVÉ: Multi-protocol dialog (V2)
+            from gui.word_protocol_dialog_v2 import WordProtocolGeneratorDialogV2
 
-            dialog = WordProtocolGeneratorDialog(self)
+            dialog = WordProtocolGeneratorDialogV2(self)
             dialog.exec()
         except Exception as e:
             from PyQt6.QtWidgets import QMessageBox

@@ -17,27 +17,21 @@ if exist dist rmdir /s /q dist
 
 echo.
 echo [3/4] Sestavuji DEBUG EXE (s console oknem)...
-echo POZOR: Vzorove protokoly NEBUDOU zabaleny do EXE (problem s diakritikou)
 pyinstaller --noconfirm ^
     --onedir ^
     --console ^
     --name "LABORATO5_DEBUG" ^
     --add-data "templates;templates" ^
     --add-data "config;config" ^
+    --add-data "sample_protocols;sample_protocols" ^
     --collect-data docxcompose ^
     --collect-data docxtpl ^
     main.py
 
 echo.
-echo [4/4] Kopiruji Vzorove protokoly do dist...
-if exist "Vzorové protokoly" (
-    xcopy "Vzorové protokoly" "dist\LABORATO5_DEBUG\Vzorové protokoly\" /E /I /Y
-    echo   - Vzorove protokoly zkopirovany
-)
-if exist "Vzor popis práce 2024" (
-    xcopy "Vzor popis práce 2024" "dist\LABORATO5_DEBUG\Vzor popis práce 2024\" /E /I /Y
-    echo   - Vzor popis prace zkopirovany
-)
+echo [4/4] Vytvářím projects složku v dist...
+if not exist "dist\LABORATO5_DEBUG\projects" mkdir "dist\LABORATO5_DEBUG\projects"
+echo   - Projects složka vytvořena
 
 echo.
 echo ========================================

@@ -1,0 +1,30 @@
+======================================================================
+TEST: PP kategorizace pracovnich poloh
+======================================================================
+
+[INFO] Nacteno 11 poloh z sekce 'trup'
+[INFO] Nacteno 10 poloh z sekce 'hlava_krk'
+[INFO] Nacteno 10 poloh z sekce 'phk'
+[INFO] Nacteno 10 poloh z sekce 'lhk'
+[INFO] Nacteno 7 poloh z sekce 'dk'
+[INFO] Nacteno 4 poloh z sekce 'ostatni'
+
+Generuji PP podminkove texty (stub)
+  PP smena: 500 min -> koeficient: 1.025
+  PP limity: kat1 0-102, kat2 103-164, kat3 >165
+  N limity: kat1 0-21, kat2 22-31, kat3 >32
+  PP kategorizace: Celkov? doba zauj?m?n? nep?ijateln?ch pracovn?ch p...
+
+======================================================================
+VYSLEDEK KATEGORIZACE:
+======================================================================
+
+Prvni PP podminka kategorie:
+Traceback (most recent call last):
+  File "C:\Users\vaclavik\lab5\laborator_protokoly\test_pp_kategorizace.py", line 45, in <module>
+    print(f"  {texts.get('prvni_pp_podminka_kategorie', 'N/A')}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\vaclavik\miniconda3\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u0159' in position 28: character maps to <undefined>

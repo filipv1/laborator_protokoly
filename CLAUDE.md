@@ -4,11 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LABORATO5 is a PyQt6-based automation tool for a physical workload laboratory. It eliminates manual Excel form-filling by providing a wizard interface that:
+LABORATO5 is a PyQt6-based automation tool for a physical workload laboratory. It provides two main workflows:
+
+**Workflow 1: Excel Generation** - Creates new project with pre-filled Excel files
 1. Collects measurement data through a 6-step GUI wizard
 2. Parses Word documents to extract time schedules (using python-docx)
 3. Generates project folders with pre-filled Excel files (LSZ, PP, CFZ variants)
 4. Copies tabular data (time schedules) into the appropriate Excel sheets
+5. Saves measurement data as JSON for later use
+
+**Workflow 2: Word Protocol Generation** - Generates Word reports from existing projects
+1. Reads measurement data (JSON) from existing project folder
+2. Extracts calculation results from filled Excel files
+3. Generates conditional texts based on measurement results
+4. Renders Word protocol using docxtpl templates with two-JSON context
+5. Applies post-processing (highlighting, empty row removal)
 
 **Current Status:** Prototype v2.0.0 - Core functionality implemented. Excel generation complete. Word protocol generation implemented with conditional text logic for LSZ, PP (ČAS/KUSY), and CFZ protocols. Automatic empty table/row removal implemented.
 
@@ -62,6 +72,10 @@ python test_ares_api.py
 
 # Test gender-based text generation
 python test_gender_implementation.py
+
+# Read Excel results into JSON (standalone utilities)
+python read_lsz_results.py <path_to_lsz_excel>  # LSZ Excel → lsz_results.json
+python read_pp_results.py <path_to_pp_excel>    # PP Excel → pp_results.json
 
 # Debug Excel reading
 python debug_excel.py
@@ -319,7 +333,7 @@ The `WordProtocolPipeline` class orchestrates the complete generation process:
 ### Conditional Text System
 The application generates Word protocols with dynamic text based on measurement results. This is handled by `core/text_generator.py`:
 
-**Eleven conditional text generators:**
+**LSZ Conditional Text Generators (11 total):**
 1. **prvni_text_podminka_pocetdni** - Based on measurement days (1 or 2 days)
 2. **druhy_text_podminka_limit1** - PHK hygiene limits (4 text variants based on extensor/flexor limits)
 3. **treti_text_podminka_limit1** - LHK hygiene limits (4 text variants based on extensor/flexor limits)
@@ -337,17 +351,48 @@ The application generates Word protocols with dynamic text based on measurement 
    - Evaluates all 4 muscle groups: PHK extensor, PHK flexor, LHK extensor, LHK flexor
    - See `JEDENACTA_PODMINKA_DOKUMENTACE.md` for detailed algorithm and edge cases
 
+**PP Conditional Text Generators:**
+1. **prvni_pp_podminka_kategorie** - Work position categorization according to NV 361/2007 Table 8
+   - Calculates work shift coefficient based on work duration (standard: 480 min)
+   - Adjusts category limits for non-standard shift lengths
+   - Categorizes each body position (trup, hlava_krk, phk, lhk, dk, ostatni) into categories 1-3
+   - Separate limits for "PP" (working positions) and "N" (unfavorable positions)
+   - Returns complete text with category evaluation
+   - See `PP_KATEGORIE_LIMITY_DOKUMENTACE.md` for coefficient calculation and category boundaries
+2. **pp_problematicke_polohy_seznam** - List of problematic positions only
+   - Returns comma-separated list of positions that exceeded the highest measured category
+   - Category 2: Lists ALL positions that exceeded category 1
+   - Category 3: Lists ONLY positions that exceeded category 2 (worst cases)
+   - Category 1: Returns empty string (no problems)
+   - Format: "dynamické předklon trupu, statické otočení hlavy" (lowercase with type)
+   - Use for custom text formulations or conditional display in templates
+   - See `PP_SEZNAM_PROBLEMATICKYCH_POLOH_DOCS.md` for usage examples
+3. **pp_kategorie_cislo** - Category number only
+   - Returns string "1", "2", or "3" representing highest measured category
+   - Logic: If any position exceeds category X, result is X+1
+   - Exceeded category 1 → returns "2"
+   - Exceeded category 2 → returns "3"
+   - No exceedances → returns "1"
+   - Returns STRING not integer - use string comparison in templates: `{% if texts.pp_kategorie_cislo == '1' %}`
+   - Use for conditional logic and dynamic text generation in templates
+   - See `PP_KATEGORIE_CISLO_DOCS.md` for usage examples
+
 **Key function:**
 ```python
-generate_conditional_texts(measurement_data: dict, results_data: dict) -> dict
+generate_conditional_texts(measurement_data: dict, results_data: dict, protocol_type: str = "LSZ") -> dict
 ```
-- Reads `measurement_data.json` (GUI input) and `lsz_results.json` (Excel results)
-- Returns dictionary with 11 generated text keys
-- Uses mathematical rounding (_math_round) for consistency with Excel
-- Looks up values in table_W4_Y51 and table_force_distribution
-- Calculates work shift-based limits for large forces (55-70% Fmax)
-- Analyzes all activities in table_force_distribution to find those with force_over_70 > 100
-- Evaluates hierarchical load levels based on hygiene limits (11th condition)
+- Reads `measurement_data.json` (GUI input) and protocol-specific results JSON (Excel results)
+- **For LSZ:** Returns dictionary with 11 LSZ conditional text keys
+  - Uses mathematical rounding (_math_round) for consistency with Excel
+  - Looks up values in table_W4_Y51 and table_force_distribution
+  - Calculates work shift-based limits for large forces (55-70% Fmax)
+  - Analyzes all activities in table_force_distribution to find those with force_over_70 > 100
+  - Evaluates hierarchical load levels based on hygiene limits (11th condition)
+- **For PP (PP_CAS/PP_KUSY):** Returns dictionary with PP conditional text keys and category limits
+  - Calculates work shift coefficient based on work_duration_min
+  - Adjusts category limits for PP and N position types
+  - Categorizes all body positions into categories 1-3
+  - Exports pp_kat1_max, pp_kat2_max, n_kat1_max, n_kat2_max for template use
 
 ### Word Template Structure
 Templates use **docxtpl** (Jinja2 syntax) with two-JSON context:
@@ -414,7 +459,8 @@ See `PP_EMPTY_ROWS_REMOVAL.md` for detailed PP removal documentation.
 - `PP_IMPLEMENTATION_SUMMARY.md` - PP protocol implementation guide and testing instructions
 - `PP_EMPTY_ROWS_REMOVAL.md` - Documentation for PP empty row/table removal logic
 - `PP_RESULTS_USAGE_EXAMPLES.md` - Examples of using PP results in templates
-- Test scripts: `test_word_generation_integration.py`, `test_conditional_texts.py`, `test_jedenacta_text_podminka.py`, etc.
+- `PP_KATEGORIE_LIMITY_DOKUMENTACE.md` - Documentation for PP work position categorization (NV 361/2007)
+- Test scripts: `test_word_generation_integration.py`, `test_conditional_texts.py`, `test_jedenacta_text_podminka.py`, `test_pp_kategorizace.py`, etc.
 
 ## Building Standalone EXE
 
@@ -458,7 +504,7 @@ See `JAK_VYTVORIT_EXE.md` for detailed build instructions and troubleshooting.
 - Word protocol generation with conditional text logic
 - Two-JSON context system (measurement_data + results_data)
 - File upload and management system
-- Conditional text generators (11 variants, including hierarchical load evaluation)
+- Conditional text generators (11 variants for LSZ, including hierarchical load evaluation)
 - Holter highlighting in Word tables
 - Force highlighting with red colors in Word output
 - **GUI integration of Word generation** (via WordProtocolGeneratorDialog)
@@ -470,11 +516,13 @@ See `JAK_VYTVORIT_EXE.md` for detailed build instructions and troubleshooting.
 - Main menu with workflow selection
 - **PyInstaller build system** for standalone EXE distribution
 - **11th conditional text** (jedenacta_text_podminka) - hierarchical evaluation of all 4 muscle groups
+- **PP work position categorization** (prvni_pp_podminka_kategorie) - NV 361/2007 Table 8 implementation with coefficient-based limit adjustment
 
 **Not Yet Implemented (see NEXT_STEPS_ANALYSIS.md):**
 - All 15 Word template variants (currently only test templates exist)
-- PP-specific conditional text generators (currently using stubs/placeholders)
+- Additional PP-specific conditional text generators (categorization implemented, more conditions planned)
 - CFZ protocol reader (`read_cfz_results.py`) - CFZ Excel reading not yet implemented
+- CFZ-specific conditional text generators
 - PDF export from Word protocols
 - Loading existing projects for editing
 - Unit tests
@@ -489,18 +537,34 @@ See `JAK_VYTVORIT_EXE.md` for detailed build instructions and troubleshooting.
 
 ## Important Files
 
+**Documentation:**
 - `PROJECT_SUMMARY.md` - High-level project overview, features, architecture
 - `NEXT_STEPS_ANALYSIS.md` - Detailed analysis of missing features and implementation roadmap
-- `measurement_data_example.json` - Example of complete JSON structure
-- `config/README.md` - Instructions for adding new Excel mappings
 - `WORD_PLACEHOLDERS_GUIDE.md` - Guide for working with two-JSON context in Word templates
 - `TABLES_ANALYSIS.md` - Analysis of Excel table structures and data flows
 - `JAK_VYTVORIT_EXE.md` - Guide for building standalone executable with PyInstaller
+- `JEDENACTA_PODMINKA_DOKUMENTACE.md` - Documentation for 11th conditional text (hierarchical load evaluation)
+- `PP_IMPLEMENTATION_SUMMARY.md` - PP protocol implementation guide and testing instructions
+- `PP_EMPTY_ROWS_REMOVAL.md` - Documentation for PP empty row/table removal logic
+- `PP_KATEGORIE_LIMITY_DOKUMENTACE.md` - Documentation for PP work position categorization (NV 361/2007)
+- `PP_SEZNAM_PROBLEMATICKYCH_POLOH_DOCS.md` - Documentation for pp_problematicke_polohy_seznam placeholder
+- `PP_KATEGORIE_CISLO_DOCS.md` - Documentation for pp_kategorie_cislo placeholder (category number)
+- `config/README.md` - Instructions for adding new Excel mappings
+
+**Example data:**
+- `measurement_data_example.json` - Example of complete JSON structure
+
+**Core scripts:**
+- `main.py` - Application entry point
 - `generate_word_from_two_sources.py` - Word generation script (now integrated via WordProtocolPipeline)
-- `read_lsz_results.py` - Reads results data from Excel files
-- `core/word_protocol_pipeline.py` - Pipeline orchestrator for Word generation
-- `gui/word_protocol_dialog.py` - GUI dialog for selecting files and generating Word protocols
+- `read_lsz_results.py` - Reads LSZ results data from Excel files → `lsz_results.json`
+- `read_pp_results.py` - Reads PP results data from Excel files → `pp_results.json`
 - `build_exe.bat` - Automated build script for creating Windows executable
+
+**Analysis utilities:**
+- `analyze_pp_excel.py` - Analyzes PP Excel structure and data ranges
+- `analyze_word_template.py` - Analyzes Word template placeholders
+- `compare_templates.py` - Compares different Word template versions
 
 ## Working with This Codebase
 
@@ -515,7 +579,7 @@ When modifying:
 - **Path handling:** Use `pathlib.Path` throughout (already established pattern)
 - **Error handling:** Word generation dialog uses QMessageBox for errors; wizard still prints to console
 - **Word templates:** Use two-JSON context (`input` and `results`) to separate GUI data from calculated results
-- **Conditional texts:** All 11 conditional text generators are in `text_generator.py` - currently LSZ-focused, PP uses stubs
+- **Conditional texts:** All conditional text generators are in `text_generator.py` - 11 for LSZ (complete), PP categorization implemented (more conditions planned)
 - **Post-processing:** Empty row removal logic differs by protocol type (LSZ vs PP) - see `remove_empty_activity_rows()` vs `remove_empty_pp_rows()`
 - **File uploads:** Temporary files are managed by `FileManager` and cleaned up on app exit (via atexit hook)
 - **Word pipeline:** `WordProtocolPipeline` orchestrates the complete generation - modify here to change the workflow
@@ -545,22 +609,42 @@ python main.py
 # → Click "Generovat Word Protokol" → Select files → Generate
 ```
 
-**Current test files** (standalone scripts, not automated tests):
-- `test_word_generation_integration.py` - Full Word generation workflow
+**Test file patterns** (46+ standalone scripts, not automated tests):
+
+**LSZ conditional text tests:**
 - `test_conditional_texts.py` - Tests prvni_text_podminka
 - `test_druhy_text_podminka.py` through `test_devata_text_podminka.py` - Individual condition tests
+- `test_desata_text_podminka.py` - Tests 10th conditional text
 - `test_jedenacta_text_podminka.py` - Tests 11th conditional text (hierarchical load evaluation)
 - `test_jedenacta_text_podminka_hranicni_pripady.py` - Tests edge cases for 11th condition
 - `test_final_all_six_conditions.py` - Tests multiple conditions together
 - `test_all_seven_conditions.py` - Tests seven conditional texts
-- `test_subdoc_integration.py` - Subdocument integration tests
+
+**PP protocol tests:**
+- `test_pp_kategorizace.py` - Tests PP work position categorization (NV 361/2007)
+- `test_pp_empty_rows.py` - Tests PP empty row removal logic
+- `test_pp_coefficient_and_limits.py` - Tests coefficient calculation for category limits
+- `test_pp_seznam_problematickych_poloh.py` - Tests pp_problematicke_polohy_seznam placeholder on real data
+- `test_pp_seznam_s_problemy.py` - Tests pp_problematicke_polohy_seznam with simulated problematic positions
+- `test_pp_kategorie_cislo.py` - Tests pp_kategorie_cislo placeholder (category number 1/2/3)
+
+**Word generation tests:**
+- `test_word_generation_integration.py` - Full Word generation workflow
 - `test_force_highlighting.py` - Tests force highlighting in Word tables
+- `test_subdoc_integration.py` - Subdocument integration tests
+- `verify_red_colors.py` - Verifies red color highlighting in Word output
+
+**API and language tests:**
 - `test_ares_api.py` - Tests ARES API integration for company data lookup
 - `test_gender_implementation.py` - Tests gender-based Czech text generation
 - `test_czech_filter.py` - Tests Czech language filters for Jinja2 templates
+
+**Debug scripts:**
 - `debug_excel.py` - Excel reading and debugging
+- `debug_jedenacta_podminka.py` - Debugs 11th conditional text
+- `debug_pp_table_headings.py` - Debugs PP table heading detection
+- `debug_pp_table_removal.py` - Debugs PP table removal logic
 - `create_simple_test.py` - Creates simple test Word documents
-- `verify_red_colors.py` - Verifies red color highlighting in Word output
 
 **Standalone Word generation (without GUI):**
 ```bash

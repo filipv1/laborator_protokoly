@@ -1,0 +1,167 @@
+============================================================
+PP EXCEL STRUCTURE ANALYSIS
+============================================================
+
+File: PP__fjfjfe_CAS.xlsx
+Sheets: ['Časový snímek', 'TRUP A', 'HLAVA A', 'PHK A', 'LHK A', 'DKK A', 'OST. ČÁSTI TĚLA A', 'SOUHRN A', 'TRUP B', 'HLAVA B', 'PHK B', 'LHK B', 'DKK B', 'OST. ČÁSTI TĚLA B', 'SOUHRN B', 'Průměr', 'Modul1']
+Using sheet: 'Průměr'
+
+============================================================
+TABULKA STRUKTURY:
+============================================================
+
+Header row (radek 3):
+  A: TRUP
+  B: None
+  C: None
+  D: None
+  E: None
+  F: None
+
+Trup (radky 4-14):
+  Radek 4:
+    A: Předklon trupu větší než 60°
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 5:
+    A: Záklon bez opory celého těla
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 6:
+    A: Výrazný úklon či pootočení trupu větší než 20°
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  >> Pocet neprazdnych radku: 11/11
+
+Hlava a krk (radky 16-25):
+  Radek 16:
+    A: Předklon hlavy větší než 25° bez podpory trupu
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 17:
+    A: Záklon hlavy bez podpory celé hlavy
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 18:
+    A: Úklon a rotace hlavy větší než 15°
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  >> Pocet neprazdnych radku: 10/10
+
+PHK (radky 27-36):
+  Radek 27:
+    A: Nevhodná poloha paže (zpětné ohnutí paže, krajní zevní rotace paže, zvednuté rameno)
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 28:
+    A: Vzpažení paže větší než 60°
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 29:
+    A: Extrémní polohy kloubů horních končetin, jejichž rozsah se blíží maximálnímu rozpětí
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  >> Pocet neprazdnych radku: 10/10
+
+LHK (radky 38-47):
+  Radek 38:
+    A: Nevhodná poloha paže (zpětné ohnutí paže, krajní zevní rotace paže, zvednuté rameno)
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 39:
+    A: Vzpažení paže větší než 60°
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 40:
+    A: Extrémní polohy kloubů horních končetin, jejichž rozsah se blíží maximálnímu rozpětí
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  >> Pocet neprazdnych radku: 10/10
+
+DK (radky 49-55):
+  Radek 49:
+    A: Extrémní flexe kolena, extrémní dorzální/plantární flexe v kotníku
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 50:
+    A: Extrémní polohy kloubů dolních končetin, jejichž rozsah se blíží maximálnímu rozpětí
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 51:
+    A: Nevhodné polohy dolních končetin (extrémní flexe kolene, extrémní dorsální a plantární flexe v kotníku, vnitřní nebo zevní rotace kloubů dolních končetin)
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  >> Pocet neprazdnych radku: 7/7
+
+Ostatni (radky 57-60):
+  Radek 57:
+    A: Extrémní polohy kloubů
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 58:
+    A: Polohy kloubů v rozsahu, který se blíží maximálním rozpětím s frekvencí pohybů větší nebo rovné 2/min
+    B: Dynamická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: N
+  Radek 59:
+    A: Práce vleže, v kleče, v dřepu
+    B: Statická
+    C: [EMPTY]
+    D: [EMPTY]
+    E: [EMPTY]
+    F: PP
+  >> Pocet neprazdnych radku: 4/4
+
+============================================================
+ANALYSIS COMPLETE
+============================================================

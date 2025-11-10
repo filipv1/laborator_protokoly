@@ -1,0 +1,47 @@
+============================================================
+UNIT TESTY: PP Koeficient a kategoriální limity
+============================================================
+
+[TESTY KOEFICIENTU]
+[OK] Test standard shift (480 min)
+[OK] Test longer shift (481 min -> 1.025): OK
+[OK] Test longer shift (509 min -> 1.025): OK
+[OK] Test longer shift (510 min -> 1.05): OK
+[OK] Test longer shift (540 min -> 1.075): OK
+[OK] Test longer shift (600 min -> 1.125): OK
+[OK] Test longer shift (660 min -> 1.175): OK
+[OK] Test longer shift (689 min -> 1.175): OK
+[OK] Test longer shift (690 min -> 1.2): OK
+[OK] Test longer shift (720 min -> 1.2): OK
+[OK] Test shorter shift (479 min -> 0.975): OK
+[OK] Test shorter shift (450 min -> 0.975): OK
+[OK] Test shorter shift (420 min -> 0.95): OK
+[OK] Test shorter shift (390 min -> 0.925): OK
+[OK] Test shorter shift (300 min -> 0.85): OK
+[OK] Test shorter shift (270 min -> 0.825): OK
+[OK] Test shorter shift (240 min -> 0.8): OK
+[OK] Test shorter shift (200 min -> 0.8): OK
+
+[TESTY LIMITU]
+[OK] Test limits standard coefficient (1.0): OK
+  PP: 0-100, 101-160, >161
+  N: 0-20, 21-30, >31
+[OK] Test limits longer shift (1.05): OK
+  PP: 0-105, 106-168, >169
+  N: 0-21, 22-32, >33
+[OK] Test limits shorter shift (0.95): OK
+  PP: 0-95, 96-152, >153
+  N: 0-19, 20-29, >30
+[OK] Test limits max coefficient (1.2): OK
+  PP: 0-120, 121-192, >193
+  N: 0-24, 25-36, >37
+[OK] Test limits min coefficient (0.8): OK
+  PP: 0-80, 81-128, >129
+  N: 0-16, 17-24, >25
+[OK] Test rounding edge cases: OK
+  102.5 -> 102
+  21.0 -> 21
+
+============================================================
+[OK] VSECHNY TESTY PROSLY!
+============================================================

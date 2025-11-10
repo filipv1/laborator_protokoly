@@ -29,10 +29,9 @@ class WordProtocolGeneratorDialog(QDialog):
         try:
             # Zkus najít šablonu v různých lokacích
             possible_paths = [
-                Path(r"Vzorové protokoly\Autorizované protokoly pro MUŽE\lsz_placeholdery_v2.docx"),
-                Path("Vzorové protokoly") / "Autorizované protokoly pro MUŽE" / "lsz_placeholdery_v2.docx",
+                Path("sample_protocols") / "Autorizované protokoly pro MUŽE" / "lsz_placeholdery_v2.docx",
                 # Pro PyInstaller - hledej relativně k exe
-                self._get_resource_path("Vzorové protokoly") / "Autorizované protokoly pro MUŽE" / "lsz_placeholdery_v2.docx"
+                self._get_resource_path("sample_protocols") / "Autorizované protokoly pro MUŽE" / "lsz_placeholdery_v2.docx"
             ]
 
             self.default_template_path = None
@@ -58,7 +57,7 @@ class WordProtocolGeneratorDialog(QDialog):
         import os
 
         # Pro PyInstaller - hledej vedle EXE souboru, ne v _MEIPASS
-        # Protože složka "Vzorové protokoly" má diakritiku a PyInstaller ji neumí zabalit
+        # Složka "sample_protocols" je zabalena v _internal/
         if getattr(sys, 'frozen', False):
             # Běží jako EXE
             exe_dir = Path(sys.executable).parent
@@ -265,8 +264,8 @@ class WordProtocolGeneratorDialog(QDialog):
 
             # Hledej template v různých lokacích
             possible_paths = [
-                Path(f"Vzorové protokoly/{template_folder}/{template_filename}"),
-                self._get_resource_path("Vzorové protokoly") / template_folder / template_filename,
+                Path("sample_protocols") / template_folder / template_filename,
+                self._get_resource_path("sample_protocols") / template_folder / template_filename,
             ]
 
             # Najdi první existující cestu
@@ -314,11 +313,11 @@ class WordProtocolGeneratorDialog(QDialog):
         # Najdi výchozí složku pro šablony
         start_dir = "."
         try:
-            vzorove_path = self._get_resource_path("Vzorové protokoly")
-            if vzorove_path.exists():
-                start_dir = str(vzorove_path)
-            elif Path("Vzorové protokoly").exists():
-                start_dir = "Vzorové protokoly"
+            samples_path = self._get_resource_path("sample_protocols")
+            if samples_path.exists():
+                start_dir = str(samples_path)
+            elif Path("sample_protocols").exists():
+                start_dir = "sample_protocols"
         except:
             pass
 

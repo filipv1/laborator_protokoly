@@ -875,6 +875,151 @@ def _format_pp_position_name(typ_svalove_prace: str, nazev_polohy: str) -> str:
         return "neznámá poloha"
 
 
+def _get_pp_max_category(
+    results_data: Dict[str, Any],
+    category_limits: Dict[str, Any]
+) -> int:
+    """
+    Určí nejvyšší kategorii pracovních poloh (1, 2, nebo 3).
+
+    Projde všechny sekce a polohy, vypočítá jejich kategorie podle limitů,
+    a vrátí nejvyšší nalezenou kategorii.
+
+    Args:
+        results_data: pp_results.json s daty o polohách
+        category_limits: Dictionary s limity kategorií (pp_kat1_max, n_kat1_max, atd.)
+
+    Returns:
+        1, 2, nebo 3 (nejvyšší kategorie)
+    """
+    sections = ["trup", "hlava_krk", "phk", "lhk", "dk", "ostatni"]
+    max_category = 1
+
+    for section_name in sections:
+        section = results_data.get(section_name, [])
+
+        if isinstance(section, list):
+            items = section
+        elif isinstance(section, dict):
+            items = section.values()
+        else:
+            continue
+
+        for row_data in items:
+            if not isinstance(row_data, dict):
+                continue
+
+            prumer_min = row_data.get("prumer_min", 0)
+            typ = row_data.get("typ_pracovni_polohy", "N")
+
+            # Skip pokud je prumer_min 0 nebo None
+            if prumer_min == 0 or prumer_min is None:
+                continue
+
+            # Určit kategorii podle typu a limitů
+            if typ == "PP":
+                if prumer_min <= category_limits["pp_kat1_max"]:
+                    category = 1
+                elif prumer_min <= category_limits["pp_kat2_max"]:
+                    category = 2
+                else:
+                    category = 3
+            else:  # typ == "N"
+                if prumer_min <= category_limits["n_kat1_max"]:
+                    category = 1
+                elif prumer_min <= category_limits["n_kat2_max"]:
+                    category = 2
+                else:
+                    category = 3
+
+            # Update max kategorie
+            if category > max_category:
+                max_category = category
+
+    return max_category
+
+
+def _get_pp_problematic_positions_list(
+    results_data: Dict[str, Any],
+    category_limits: Dict[str, Any]
+) -> str:
+    """
+    Vrací POUZE seznam problematických poloh (nejvyšší kategorie), oddělených čárkou.
+    Použití v šabloně jako samostatný placeholder.
+
+    Args:
+        results_data: pp_results.json s daty o polohách
+        category_limits: Dictionary s limity kategorií (pp_kat1_max, n_kat1_max, atd.)
+
+    Returns:
+        Čárkou oddělený seznam poloh (např. "dynamické předklon trupu, statické otočení hlavy")
+        Prázdný string pokud není žádná problematická poloha
+    """
+    # Nejdřív zjisti max kategorii
+    max_category = _get_pp_max_category(results_data, category_limits)
+
+    if max_category == 1:
+        return ""  # Žádné problémy
+
+    sections = ["trup", "hlava_krk", "phk", "lhk", "dk", "ostatni"]
+    category_2_problems = []  # Kategorie 2+
+    category_3_problems = []  # Kategorie 3
+
+    # Projít všechny sekce a sbírat problematické polohy
+    for section_name in sections:
+        section = results_data.get(section_name, [])
+
+        if isinstance(section, list):
+            items = section
+        elif isinstance(section, dict):
+            items = section.values()
+        else:
+            continue
+
+        for row_data in items:
+            if not isinstance(row_data, dict):
+                continue
+
+            prumer_min = row_data.get("prumer_min", 0)
+            typ = row_data.get("typ_pracovni_polohy", "N")
+            typ_svalove_prace = row_data.get("typ_svalove_prace", "")
+            nazev_polohy = row_data.get("nazev_polohy", "")
+
+            if prumer_min == 0 or prumer_min is None:
+                continue
+
+            # Určit kategorii podle typu a limitů
+            if typ == "PP":
+                if prumer_min <= category_limits["pp_kat1_max"]:
+                    category = 1
+                elif prumer_min <= category_limits["pp_kat2_max"]:
+                    category = 2
+                else:
+                    category = 3
+            else:  # typ == "N"
+                if prumer_min <= category_limits["n_kat1_max"]:
+                    category = 1
+                elif prumer_min <= category_limits["n_kat2_max"]:
+                    category = 2
+                else:
+                    category = 3
+
+            # Sbírat problematické polohy
+            formatted_name = _format_pp_position_name(typ_svalove_prace, nazev_polohy)
+
+            if category >= 2:
+                category_2_problems.append(formatted_name)
+
+            if category == 3:
+                category_3_problems.append(formatted_name)
+
+    # Vrátit seznam podle max kategorie
+    if max_category == 3:
+        return ", ".join(category_3_problems)
+    else:  # max_category == 2
+        return ", ".join(category_2_problems)
+
+
 def _calculate_prvni_pp_podminka_kategorie(
     results_data: Dict[str, Any],
     category_limits: Dict[str, Any]
@@ -1087,8 +1232,36 @@ def generate_conditional_texts(
                 category_limits
             )
             print(f"  PP kategorizace: {texts['prvni_pp_podminka_kategorie'][:50].encode('ascii', 'replace').decode('ascii')}...")
+
+            # PP SEZNAM: Pouze seznam problematických poloh (pro samostatné použití v šabloně)
+            texts["pp_problematicke_polohy_seznam"] = _get_pp_problematic_positions_list(
+                results_data,
+                category_limits
+            )
+            if texts["pp_problematicke_polohy_seznam"]:
+                print(f"  PP seznam problémových poloh: {texts['pp_problematicke_polohy_seznam'][:80].encode('ascii', 'replace').decode('ascii')}...")
+            else:
+                print("  PP seznam problémových poloh: (prázdný - kategorie 1)")
+
+            # PP KATEGORIE ČÍSLO: Pouze číslo nejvyšší kategorie (1, 2, nebo 3)
+            max_category_number = _get_pp_max_category(results_data, category_limits)
+            texts["pp_kategorie_cislo"] = str(max_category_number)
+            print(f"  PP kategorie číslo: {texts['pp_kategorie_cislo']}")
+
+            # PP PŘEKROČENÁ KATEGORIE: Číslo kategorie, která byla překročena (0, 1, nebo 2)
+            # Kategorie 1 → překročena 0 (žádná)
+            # Kategorie 2 → překročena 1
+            # Kategorie 3 → překročena 2
+            if max_category_number == 1:
+                texts["pp_prekocrena_kategorie"] = ""
+            else:
+                texts["pp_prekocrena_kategorie"] = str(max_category_number - 1)
+            print(f"  PP překročená kategorie: '{texts['pp_prekocrena_kategorie']}'")
         else:
             texts["prvni_pp_podminka_kategorie"] = "PP results data not available"
+            texts["pp_problematicke_polohy_seznam"] = ""
+            texts["pp_kategorie_cislo"] = "1"  # Default kategorie 1
+            texts["pp_prekocrena_kategorie"] = ""  # Default žádná překročená
             print("  [WARNING] PP kategorizace preskocena - results_data is None")
 
         # PP-specific stub texty (další podmínky budou implementovány později)
