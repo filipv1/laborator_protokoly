@@ -9,10 +9,11 @@ LSZ_MAPPING = {
         "D3": "section2_firma.company",
         "D4": "section2_firma.profession_name",
         "D5": "section2_firma.measurement_date",
-        "D6": "section4_worker_a.work_duration_min",
+        "D6": "section4_worker_a.work_duration",
         "D7": "section4_worker_a.emg_holter",
         "D8": "section6_final.measured_by",
         "J4": "section2_firma.workplace",
+        "J6": "section4_worker_a.breaks",
 
         # Pracovník A (sloupec D)
         "D12": "section4_worker_a.full_name",
@@ -54,6 +55,7 @@ PP_CAS_MAPPING = {
         "D7": "section2_firma.measurement_date",
         "D8": "section2_firma.shift_pattern",
         "D9": "section6_final.measured_by",
+        "Q8": "section4_worker_a.work_duration_min",
 
         # Pracovník B (sloupec T, jen jméno a věk)
         "T5": "section5_worker_b.full_name",
@@ -71,6 +73,7 @@ PP_KUSY_MAPPING = {
         "D7": "section2_firma.measurement_date",
         "D8": "section2_firma.shift_pattern",
         "D9": "section6_final.measured_by",
+        "Q8": "section4_worker_a.work_duration_min",
 
         # Pracovník B (sloupec T, jen jméno a věk)
         "T5": "section5_worker_b.full_name",

@@ -22,7 +22,7 @@ LSZ_TABLE_MAPPING = {
     "columns": {
         "operation": "C",      # Rozpis
         "time_min": "F",       # Čas/směna [min]
-        "norm_pcs_hour": "J",  # Norma [ks/hod] - vypočítá se z pieces_count a time_min
+        "pieces_count": "J",   # Počet kusů
         "notes": "M"           # Poznámky
     }
 }

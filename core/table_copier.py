@@ -91,19 +91,16 @@ class TableCopier:
             ws[f"{mapping['columns']['operation']}{row_num}"] = line_data.get("operation", "")
             ws[f"{mapping['columns']['time_min']}{row_num}"] = line_data.get("time_min")
 
-            # Norma [ks/hod] - vypočítej z pieces_count a time_min
+            # Počet kusů - kopíruj přímo (pokud existuje)
             pieces = line_data.get("pieces_count")
-            time_min = line_data.get("time_min")
-            if pieces and time_min and time_min > 0:
-                # ks/hod = (počet kusů / čas v min) * 60
-                norm = (pieces / time_min) * 60
-                ws[f"{mapping['columns']['norm_pcs_hour']}{row_num}"] = round(norm, 2)
+            if pieces is not None:
+                ws[f"{mapping['columns']['pieces_count']}{row_num}"] = pieces
 
             row_num += 1
 
         wb.save(excel_path)
         wb.close()
-        print(f"  ✓ Časový snímek zkopírován do LSZ ({row_num - mapping['start_row']} řádků)")
+        print(f"  Casovy snimek zkopirovan do LSZ ({row_num - mapping['start_row']} radku)")
 
     def copy_time_schedule_to_pp_cas(self, excel_path: Path, time_schedule: Dict[str, Any]) -> None:
         """
