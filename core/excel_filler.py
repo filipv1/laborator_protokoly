@@ -49,15 +49,21 @@ class ExcelFiller:
 
     def _get_value_from_json(self, data: Dict[str, Any], path: str) -> Any:
         """
-        Získá hodnotu z JSON podle tečkové cesty.
+        Získá hodnotu z JSON podle tečkové cesty nebo provede výpočet.
 
         Args:
             data: JSON data
             path: Tečková cesta (např. "section3_worker_a.full_name")
+                  nebo výpočet (např. "CALC:section4_worker_a.work_duration-section4_worker_a.breaks")
 
         Returns:
             Hodnota nebo None pokud nenalezena
         """
+        # Pokud začíná "CALC:", jedná se o výpočet
+        if path.startswith("CALC:"):
+            return self._calculate_value(data, path[5:])  # Odstraň "CALC:" prefix
+
+        # Jinak normální cesta
         keys = path.split('.')
         current = data
 
@@ -66,4 +72,37 @@ class ExcelFiller:
                 current = current[key]
             return current
         except (KeyError, TypeError):
+            return None
+
+    def _calculate_value(self, data: Dict[str, Any], expression: str) -> Any:
+        """
+        Provede matematický výpočet z JSON hodnot.
+
+        Args:
+            data: JSON data
+            expression: Výraz (např. "section4_worker_a.work_duration-section4_worker_a.breaks")
+
+        Returns:
+            Vypočtená hodnota nebo None pokud se nepodaří
+        """
+        try:
+            # Najdi operátor (zatím podporujeme jen odčítání)
+            if '-' in expression:
+                parts = expression.split('-')
+                if len(parts) == 2:
+                    left_path = parts[0].strip()
+                    right_path = parts[1].strip()
+
+                    # Získej hodnoty
+                    left_value = self._get_value_from_json(data, left_path)
+                    right_value = self._get_value_from_json(data, right_path)
+
+                    # Převeď na čísla a vypočti
+                    if left_value is not None and right_value is not None:
+                        left_num = float(left_value) if not isinstance(left_value, (int, float)) else left_value
+                        right_num = float(right_value) if not isinstance(right_value, (int, float)) else right_value
+                        return left_num - right_num
+
+            return None
+        except (ValueError, TypeError, KeyError):
             return None
