@@ -20,3 +20,9 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Internal documentation - DO NOT COMMIT
+_INTERNAL*.md
+_PRIVATE*.md
+*_license_protection*
+*_test_license_protection*

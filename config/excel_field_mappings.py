@@ -5,6 +5,15 @@ Mapování polí z JSON do Excel buněk
 # ==================== LSZ ====================
 LSZ_MAPPING = {
     "Časový snímek": {
+        # Informace o firmě a měření (řádky 3-8)
+        "D3": "section2_firma.company",
+        "D4": "section2_firma.profession_name",
+        "D5": "section2_firma.measurement_date",
+        "D6": "section4_worker_a.work_duration_min",
+        "D7": "section4_worker_a.emg_holter",
+        "D8": "section6_final.measured_by",
+        "J4": "section2_firma.workplace",
+
         # Pracovník A (sloupec D)
         "D12": "section4_worker_a.full_name",
         "D13": "section4_worker_a.initials",

@@ -836,27 +836,159 @@ def _calculate_pp_category_limits(coefficient: float) -> Dict[str, Any]:
     }
 
 
+def _detect_czech_noun_gender(nazev_polohy: str) -> str:
+    """
+    Detekuje gramatický rod prvního podstatného jména v názvu pracovní polohy.
+
+    Kombinuje slovník známých slov + pattern matching koncovek.
+
+    Args:
+        nazev_polohy: Název pracovní polohy (např. "Předklon trupu větší než 60°")
+
+    Returns:
+        "M" (mužský), "F" (ženský), nebo "N" (střední rod)
+    """
+    # Tokenizace - rozdělení podle mezer
+    tokens = nazev_polohy.strip().split()
+    if not tokens:
+        return "N"  # Fallback střední rod
+
+    # Adjektiva která přeskakujeme (hledáme první podstatné jméno)
+    skip_adjectives = {
+        "výrazný", "výrazná", "výrazné",
+        "nevhodná", "nevhodný", "nevhodné",
+        "extrémní", "extrémná", "extrémné",
+        "vnitřní", "vnitřná", "vnitřné",
+        "zevní", "zevná", "zevné"
+    }
+
+    # Najdi první podstatné jméno (ne adjektivum)
+    first_noun = None
+    for token in tokens:
+        token_lower = token.lower().strip(",.;:")
+        if token_lower not in skip_adjectives:
+            first_noun = token_lower
+            break
+
+    if not first_noun:
+        return "N"  # Fallback
+
+    # Slovník známých slov (priorita před pattern matching)
+    GENDER_DICT = {
+        # Mužský rod
+        "předklon": "M",
+        "úklon": "M",
+        "záklon": "M",
+        "dřep": "M",
+        "pohyb": "M",
+
+        # Ženský rod
+        "rotace": "F",
+        "flexe": "F",
+        "exkurze": "F",
+        "poloha": "F",
+        "polohy": "F",
+        "práce": "F",
+        "hlava": "F",
+
+        # Střední rod
+        "pootočení": "N",
+        "ohnutí": "N",
+        "zapažení": "N",
+        "vzpažení": "N",
+        "vleže": "N",
+        "kleče": "N"
+    }
+
+    # Zkus slovník
+    if first_noun in GENDER_DICT:
+        return GENDER_DICT[first_noun]
+
+    # Pattern matching podle koncovek
+    if first_noun.endswith(("klon", "on")):
+        return "M"  # předklon, úklon, záklon
+    elif first_noun.endswith(("ace", "e", "a")):
+        return "F"  # rotace, flexe, poloha, práce
+    elif first_noun.endswith(("ení", "í")):
+        return "N"  # pootočení, ohnutí, zapažení
+
+    # Fallback - střední rod (nejbezpečnější)
+    return "N"
+
+
+def _decline_czech_adjective(base_adjective: str, gender: str) -> str:
+    """
+    Skloňuje české adjektivum podle gramatického rodu.
+
+    Args:
+        base_adjective: "Dynamická" nebo "Statická"
+        gender: "M" (mužský), "F" (ženský), "N" (střední)
+
+    Returns:
+        Skloňované adjektivum v lowercase
+
+    Examples:
+        >>> _decline_czech_adjective("Dynamická", "M")
+        "dynamický"
+        >>> _decline_czech_adjective("Statická", "F")
+        "statická"
+        >>> _decline_czech_adjective("Dynamická", "N")
+        "dynamické"
+    """
+    adj_lower = base_adjective.lower().strip()
+
+    # Detekuj typ adjektiva
+    is_dynamic = "dynamick" in adj_lower
+    is_static = "statick" in adj_lower
+
+    if is_dynamic:
+        if gender == "M":
+            return "dynamický"
+        elif gender == "F":
+            return "dynamická"
+        else:  # N
+            return "dynamické"
+    elif is_static:
+        if gender == "M":
+            return "statický"
+        elif gender == "F":
+            return "statická"
+        else:  # N
+            return "statické"
+    else:
+        # Neznámé adjektivum - vrať jak je
+        return adj_lower
+
+
 def _format_pp_position_name(typ_svalove_prace: str, nazev_polohy: str) -> str:
     """
-    Formátuje název polohy pro výstupní text (lowercase).
+    Formátuje název polohy pro výstupní text s GRAMATICKY SPRÁVNÝM skloňováním.
+
+    Detekuje gramatický rod prvního podstatného jména a správně skloňuje
+    adjektivum "dynamická/statická" podle něj.
 
     Args:
         typ_svalove_prace: "Dynamická" nebo "Statická"
         nazev_polohy: "Předklon trupu..." atd.
 
     Returns:
-        Formátovaný string: "dynamické předklon trupu..."
+        Formátovaný string s GRAMATICKY SPRÁVNÝM skloňováním:
+        - "dynamický předklon trupu" (mužský rod)
+        - "dynamická rotace hlavy" (ženský rod)
+        - "dynamické pootočení" (střední rod)
+
+    Examples:
+        >>> _format_pp_position_name("Dynamická", "Předklon trupu větší než 60°")
+        "dynamický předklon trupu větší než 60°"
+        >>> _format_pp_position_name("Statická", "Rotace hlavy větší než 15°")
+        "statická rotace hlavy větší než 15°"
     """
-    # Převést typ svalové práce na lowercase
+    # Detekuj gramatický rod prvního podstatného jména
+    gender = _detect_czech_noun_gender(nazev_polohy)
+
+    # Skloňuj adjektivum podle rodu
     if typ_svalove_prace and isinstance(typ_svalove_prace, str):
-        typ_lower = typ_svalove_prace.lower()
-        # "dynamická"/"dynamicka" → "dynamické", "statická"/"staticka" → "statické"
-        if "dynamick" in typ_lower:
-            typ_formatted = "dynamické"
-        elif "statick" in typ_lower:
-            typ_formatted = "statické"
-        else:
-            typ_formatted = typ_lower
+        typ_formatted = _decline_czech_adjective(typ_svalove_prace, gender)
     else:
         typ_formatted = ""
 
@@ -1619,3 +1751,483 @@ def highlight_force_distribution_values(docx_path: str, measurement_data: Dict[s
 
     # Ulož změny (přepíše originální soubor)
     doc.save(docx_path)
+
+
+def set_cell_background(cell, hex_color: str) -> None:
+    """
+    Nastaví background (shading) buňky na zadanou hex barvu.
+
+    Používá XML manipulaci pro nastavení w:shd elementu s w:fill atributem.
+
+    Args:
+        cell: python-docx Cell objekt
+        hex_color: Hex kód barvy bez # (např. "90EE90" pro světle zelenou)
+
+    Example:
+        set_cell_background(cell, "90EE90")  # Zelená
+        set_cell_background(cell, "FFFF00")  # Žlutá
+        set_cell_background(cell, "FFC8C8")  # Světle červená
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    # Vytvoř shading element
+    shading_elm = OxmlElement('w:shd')
+    shading_elm.set(qn('w:fill'), hex_color)
+
+    # Přidej do cell properties (tcPr)
+    tcPr = cell._element.get_or_add_tcPr()
+    tcPr.append(shading_elm)
+
+
+def is_pp_table(table) -> bool:
+    """
+    Zkontroluje, jestli je tabulka PP tabulka (pracovní polohy).
+
+    PP tabulka má:
+    - 6 sloupců (nazev, typ_prace, vyskyt_a, vyskyt_b, prumer, typ_pp)
+    - Obsahuje klíčová slova: TRUP, HLAVA_KRK, PHK, LHK, atd.
+
+    Args:
+        table: python-docx Table objekt
+
+    Returns:
+        True pokud je to PP tabulka, False jinak
+    """
+    # Kontrola počtu sloupců
+    if len(table.columns) != 6:
+        return False
+
+    # Klíčová slova pro PP tabulky
+    pp_keywords = [
+        "TRUP", "Trup",
+        "HLAVA_KRK", "HLAVA A KRK", "Hlava a krk",
+        "PHK", "Pravá horní končetina",
+        "LHK", "Levá horní končetina",
+        "DOLNÍ KONČETINY", "Dolní končetiny", "DKK",
+        "OSTATNÍ ČÁSTI TĚLA", "Ostatní části těla", "OST",
+        "Statická", "Dynamická"  # Typy svalové práce
+    ]
+
+    # Zkontroluj prvních 5 řádků na přítomnost keywords
+    for row in table.rows[:5]:
+        row_text = " ".join(cell.text for cell in row.cells)
+        for keyword in pp_keywords:
+            if keyword in row_text:
+                return True
+
+    return False
+
+
+def is_pp_section_header(text: str) -> bool:
+    """
+    Zkontroluje, jestli je text section header (TRUP, HLAVA_KRK, atd.).
+
+    Args:
+        text: Text z buňky
+
+    Returns:
+        True pokud je to section header, False jinak
+    """
+    section_keywords = [
+        "TRUP", "HLAVA_KRK", "HLAVA A KRK", "PHK", "LHK",
+        "DOLNÍ KONČETINY", "DKK", "OSTATNÍ ČÁSTI TĚLA",
+        "OSTATNI", "OST", "ULTRATHINK"
+    ]
+
+    text_upper = text.upper().strip()
+    return text_upper in section_keywords
+
+
+def calculate_pp_category(
+    prumer_min: float,
+    typ_pracovni_polohy: str,
+    category_limits: Dict[str, float]
+) -> int:
+    """
+    Vypočítá kategorii (1, 2, nebo 3) pro PP pracovní polohu.
+
+    Logika podle NV 361/2007 Table 8:
+    - Typ PP: pp_kat1_max, pp_kat2_max
+    - Typ N: n_kat1_max, n_kat2_max
+
+    Args:
+        prumer_min: Průměrný čas v minutách
+        typ_pracovni_polohy: "PP" nebo "N"
+        category_limits: Dict s limity (pp_kat1_max, n_kat1_max, atd.)
+
+    Returns:
+        Kategorie 1, 2, nebo 3
+    """
+    if typ_pracovni_polohy == "PP":
+        if prumer_min <= category_limits["pp_kat1_max"]:
+            return 1
+        elif prumer_min <= category_limits["pp_kat2_max"]:
+            return 2
+        else:
+            return 3
+    else:  # typ == "N"
+        if prumer_min <= category_limits["n_kat1_max"]:
+            return 1
+        elif prumer_min <= category_limits["n_kat2_max"]:
+            return 2
+        else:
+            return 3
+
+
+def highlight_pp_categories(
+    docx_path: str,
+    measurement_data: Dict[str, Any],
+    results_data: Dict[str, Any]
+) -> None:
+    """
+    Zvýrazní čísla minut v PP tabulkách barevným backgroundem podle kategorií.
+
+    POST-PROCESSING funkce volaná po vyrendrování Jinja2 šablony.
+    Používá stejný přístup jako highlight_force_distribution_values() pro LSZ.
+
+    Kategorie → Barvy:
+    - Kategorie 1: Zelená (90EE90) - OK, bezpečné
+    - Kategorie 2: Žlutá (FFFF00) - Varování
+    - Kategorie 3: Červená (FFC8C8) - Kritické
+
+    Zvýrazňuje buňky: vyskyt_min_a (col 2), vyskyt_min_b (col 3), prumer_min (col 4)
+
+    Args:
+        docx_path: Cesta k vygenerovanému Word dokumentu
+        measurement_data: Data z measurement_data.json
+        results_data: Data z pp_results.json
+
+    Returns:
+        None (upravuje dokument in-place)
+    """
+    from docx import Document
+
+    # Vypočítej category_limits z work_duration (celková doba práce v minutách)
+    section4 = measurement_data.get("section4_worker_a", {})
+    work_duration_str = section4.get("work_duration")
+
+    if work_duration_str:
+        work_duration_min = int(work_duration_str)
+    else:
+        # Fallback - standardní směna
+        work_duration_min = 480
+        print(f"  ⚠ work_duration nenalezen, používám výchozích 480 min")
+
+    # Spočítej koeficient a limity
+    coefficient = _calculate_pp_work_shift_coefficient(work_duration_min)
+    category_limits = _calculate_pp_category_limits(coefficient)
+    print(f"  → Koeficient směny: {coefficient:.3f}, PP kat1_max: {category_limits['pp_kat1_max']}, N kat1_max: {category_limits['n_kat1_max']}")
+
+    # Barevné schéma (hex kódy bez #)
+    COLORS = {
+        1: "90EE90",  # Světle zelená
+        2: "FFFF00",  # Žlutá
+        3: "FFC8C8"   # Světle červená
+    }
+
+    # Otevři dokument
+    doc = Document(docx_path)
+
+    total_highlighted = 0
+    tables_processed = 0
+
+    # Projdi všechny tabulky
+    for table_idx, table in enumerate(doc.tables):
+        # Identifikuj PP tabulky
+        if not is_pp_table(table):
+            continue
+
+        print(f"  → Zpracovávám PP tabulku (index {table_idx})")
+        tables_processed += 1
+
+        # Projdi datové řádky (skip řádek 0 = hlavička)
+        for row_idx in range(1, len(table.rows)):
+            row = table.rows[row_idx]
+
+            # Bezpečné čtení hodnot
+            try:
+                nazev_polohy = row.cells[0].text.strip()
+                typ_pracovni_polohy = row.cells[5].text.strip()  # "N" nebo "PP"
+            except (IndexError, AttributeError):
+                continue
+
+            # Skip section headery (TRUP, HLAVA_KRK, atd.)
+            if is_pp_section_header(nazev_polohy):
+                continue
+
+            # Skip záhlaví (obsahuje "Výskyt za směnu", "MUŽ", atd.)
+            nazev_upper = nazev_polohy.upper()
+            if any(keyword in nazev_upper for keyword in ["NEPŘIJATELNÁ", "PODMÍNĚNĚ", "PRACOVNÍ POLOHA", "SVALOVÁ PRÁCE"]):
+                continue
+
+            # Načti průměr (sloupec 4) pro výpočet kategorie
+            try:
+                prumer_text = row.cells[4].text.strip()
+                prumer_min = float(prumer_text.replace(",", "."))
+            except (ValueError, IndexError, AttributeError):
+                continue
+
+            # Skip prázdné řádky (prumer_min == 0)
+            if prumer_min == 0 or prumer_min is None:
+                continue
+
+            # Skip pokud typ_pracovni_polohy není "N" nebo "PP"
+            if typ_pracovni_polohy not in ["N", "PP"]:
+                continue
+
+            # Vypočítej kategorii
+            category = calculate_pp_category(prumer_min, typ_pracovni_polohy, category_limits)
+
+            # Zvýrazni buňky 2, 3, 4 (vyskyt_min_a, vyskyt_min_b, prumer_min)
+            for col_idx in [2, 3, 4]:
+                try:
+                    cell = row.cells[col_idx]
+                    cell_text = cell.text.strip()
+
+                    # Skip prázdné buňky
+                    if not cell_text or cell_text == "0":
+                        continue
+
+                    # Nastav background podle kategorie
+                    set_cell_background(cell, COLORS[category])
+                    total_highlighted += 1
+
+                except (IndexError, AttributeError):
+                    continue
+
+    # Ulož změny
+    if total_highlighted > 0:
+        doc.save(docx_path)
+        print(f"  ✓ Zvýrazněno {total_highlighted} buněk v {tables_processed} PP tabulkách")
+    else:
+        print(f"  ⚠ Žádné buňky ke zvýraznění")
+
+
+def highlight_lsz_category(
+    docx_path: str,
+    measurement_data: Dict[str, Any],
+    results_data: Dict[str, Any]
+) -> None:
+    """
+    Zvýrazní číslo kategorie v LSZ tabulce barevným textem a backgroundem.
+
+    POST-PROCESSING funkce volaná po vyrendrování Jinja2 šablony.
+    Používá stejný přístup jako highlight_force_distribution_values() a highlight_pp_categories().
+
+    Najde tabulku podle textu "Navrhovaná kategorie:" a obarví třetí sloupec podle hodnoty.
+
+    Kategorie → Barvy (text/background):
+    - 1: černá text/zelená background - OK, nízké zatížení
+    - 2: černá text/oranžová background - Varování, střední zatížení
+    - 3: bílá text/červená background - Kritické, vysoké zatížení
+
+    Tabulka má strukturu:
+    - Sloupec 0: Dlouhý popisný text ("Celosměnový počet pohybů...")
+    - Sloupec 1: "Navrhovaná kategorie:"
+    - Sloupec 2: Číslo kategorie (1, 2, nebo 3)
+
+    Args:
+        docx_path: Cesta k vygenerovanému Word dokumentu
+        measurement_data: Data z measurement_data.json
+        results_data: Data z lsz_results.json
+
+    Returns:
+        None (upravuje dokument in-place)
+    """
+    from docx import Document
+    from docx.shared import RGBColor
+
+    # Otevři dokument
+    doc = Document(docx_path)
+
+    # Najdi tabulku s "Navrhovaná kategorie:"
+    target_table = None
+    target_row_idx = None
+
+    for table in doc.tables:
+        # Kontrola 3 sloupců
+        if len(table.columns) != 3:
+            continue
+
+        # Hledej řádek s "Navrhovaná kategorie:"
+        for row_idx, row in enumerate(table.rows):
+            if len(row.cells) >= 2:
+                cell_text = row.cells[1].text.strip()
+                # Flexibilní matching - různé varianty textu
+                if ("kategorie" in cell_text.lower() and
+                    ("navrhovaná" in cell_text.lower() or "navrhovana" in cell_text.lower())):
+                    target_table = table
+                    target_row_idx = row_idx
+                    break
+
+        if target_table:
+            break
+
+    if not target_table or target_row_idx is None:
+        print("  ⚠ Tabulka s 'Navrhovaná kategorie' nebyla nalezena")
+        return
+
+    # Přečti hodnotu z třetího sloupce
+    cell = target_table.rows[target_row_idx].cells[2]
+    cell_text = cell.text.strip()
+
+    try:
+        category = int(cell_text)
+    except (ValueError, TypeError):
+        print(f"  ⚠ Nelze převést hodnotu kategorie na číslo: '{cell_text}'")
+        return
+
+    # Definuj barvy podle kategorie
+    if category == 1:
+        text_color = RGBColor(0, 0, 0)  # Černá
+        bg_color = "90EE90"  # Světle zelená
+        desc = "černá/zelená (OK)"
+    elif category == 2:
+        text_color = RGBColor(0, 0, 0)  # Černá
+        bg_color = "FFA500"  # Oranžová
+        desc = "černá/oranžová (varování)"
+    elif category == 3:
+        text_color = RGBColor(255, 255, 255)  # Bílá
+        bg_color = "FF0000"  # Červená
+        desc = "bílá/červená (kritické)"
+    else:
+        print(f"  ⚠ Neplatná hodnota kategorie: {category} (očekáváno 1, 2, nebo 3)")
+        return
+
+    # Smaž všechny paragraphy v buňce (docxtpl může vytvářet speciální strukturu)
+    for paragraph in cell.paragraphs:
+        p = paragraph._element
+        p.getparent().remove(p)
+
+    # Vytvoř nový paragraph s obarvením
+    new_para = cell.add_paragraph()
+    new_para.alignment = 1  # Center
+    run = new_para.add_run(cell_text)
+    run.font.color.rgb = text_color
+    run.bold = True  # Tučně pro lepší viditelnost
+
+    # Nastav background buňky
+    set_cell_background(cell, bg_color)
+
+    # Ulož dokument
+    doc.save(docx_path)
+    print(f"  ✓ LSZ kategorie {category} zvýrazněna ({desc})")
+
+
+def highlight_pp_category_number(
+    docx_path: str,
+    measurement_data: Dict[str, Any],
+    results_data: Dict[str, Any]
+) -> None:
+    """
+    Zvýrazní číslo kategorie v PP tabulce barevným textem a backgroundem.
+
+    POST-PROCESSING funkce volaná po vyrendrování Jinja2 šablony.
+    Používá stejný přístup jako highlight_lsz_category().
+
+    Najde finální tabulku s "Navrhovaná kategorie:" a obarví třetí sloupec podle hodnoty.
+
+    Kategorie → Barvy (text/background):
+    - 1: černá text/zelená background - OK, přijatelné pracovní polohy
+    - 2: černá text/oranžová background - Varování, podmíněně přijatelné
+    - 3: bílá text/červená background - Kritické, nepřijatelné pracovní polohy
+
+    Tabulka má strukturu:
+    - Sloupec 0: "Výskyt nepřijatelných a podmíněně přijatelných pracovních poloh"
+    - Sloupec 1: "Navrhovaná kategorie:"
+    - Sloupec 2: Číslo kategorie (1, 2, nebo 3)
+
+    Args:
+        docx_path: Cesta k vygenerovanému Word dokumentu
+        measurement_data: Data z measurement_data.json
+        results_data: Data z pp_results.json
+
+    Returns:
+        None (upravuje dokument in-place)
+    """
+    from docx import Document
+    from docx.shared import RGBColor
+
+    # Otevři dokument
+    doc = Document(docx_path)
+
+    # Najdi tabulku s "Navrhovaná kategorie:" NEBO "Výskyt nepřijatelných"
+    target_table = None
+    target_row_idx = None
+
+    for table in doc.tables:
+        # Kontrola 3 sloupců
+        if len(table.columns) != 3:
+            continue
+
+        # Hledej řádek s "Navrhovaná kategorie:" nebo "Výskyt nepřijatelných"
+        for row_idx, row in enumerate(table.rows):
+            if len(row.cells) >= 2:
+                # Check sloupec 0 (může obsahovat "Výskyt nepřijatelných")
+                cell0_text = row.cells[0].text.strip().lower()
+                # Check sloupec 1 (měl by obsahovat "Navrhovaná kategorie:")
+                cell1_text = row.cells[1].text.strip().lower()
+
+                # Hledáme řádek kde:
+                # - Sloupec 0 obsahuje "výskyt nepřijatelných" nebo
+                # - Sloupec 1 obsahuje "navrhovaná kategorie"
+                if (("výskyt" in cell0_text and "nepřijatelných" in cell0_text) or
+                    ("vyskyt" in cell0_text and "neprijatelnych" in cell0_text) or
+                    ("kategorie" in cell1_text and ("navrhovaná" in cell1_text or "navrhovana" in cell1_text))):
+                    target_table = table
+                    target_row_idx = row_idx
+                    break
+
+        if target_table:
+            break
+
+    if not target_table or target_row_idx is None:
+        print("  ⚠ PP tabulka s 'Navrhovaná kategorie' nebyla nalezena")
+        return
+
+    # Přečti hodnotu z třetího sloupce
+    cell = target_table.rows[target_row_idx].cells[2]
+    cell_text = cell.text.strip()
+
+    try:
+        category = int(cell_text)
+    except (ValueError, TypeError):
+        print(f"  ⚠ Nelze převést PP kategorii na číslo: '{cell_text}'")
+        return
+
+    # Definuj barvy podle kategorie (stejné jako u LSZ)
+    if category == 1:
+        text_color = RGBColor(0, 0, 0)  # Černá
+        bg_color = "90EE90"  # Světle zelená
+        desc = "černá/zelená (OK)"
+    elif category == 2:
+        text_color = RGBColor(0, 0, 0)  # Černá
+        bg_color = "FFA500"  # Oranžová
+        desc = "černá/oranžová (varování)"
+    elif category == 3:
+        text_color = RGBColor(255, 255, 255)  # Bílá
+        bg_color = "FF0000"  # Červená
+        desc = "bílá/červená (kritické)"
+    else:
+        print(f"  ⚠ Neplatná hodnota PP kategorie: {category} (očekáváno 1, 2, nebo 3)")
+        return
+
+    # Smaž všechny paragraphy v buňce (docxtpl může vytvářet speciální strukturu)
+    for paragraph in cell.paragraphs:
+        p = paragraph._element
+        p.getparent().remove(p)
+
+    # Vytvoř nový paragraph s obarvením
+    new_para = cell.add_paragraph()
+    new_para.alignment = 1  # Center
+    run = new_para.add_run(cell_text)
+    run.font.color.rgb = text_color
+    run.bold = True  # Tučně pro lepší viditelnost
+
+    # Nastav background buňky
+    set_cell_background(cell, bg_color)
+
+    # Ulož dokument
+    doc.save(docx_path)
+    print(f"  ✓ PP kategorie {category} zvýrazněna ({desc})")

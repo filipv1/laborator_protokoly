@@ -13,7 +13,7 @@ from docx import Document
 from pathlib import Path
 from PIL import Image
 from jinja2 import Environment
-from core.text_generator import generate_conditional_texts, get_selected_holter_numbers, highlight_selected_holters, highlight_force_distribution_values
+from core.text_generator import generate_conditional_texts, get_selected_holter_numbers, highlight_selected_holters, highlight_force_distribution_values, highlight_pp_categories, highlight_lsz_category, highlight_pp_category_number
 
 # Fix Windows console encoding
 sys.stdout.reconfigure(encoding='utf-8')
@@ -342,14 +342,14 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
     """
     VARIANTA 2: Plochá struktura (flat merge)
     V Word šabloně používáš: {{ section1_firma.company }} a {{ Fmax_Phk_Extenzor }}
-    Podporuje LSZ, PP (ČAS/KUSY) a CFZ protokoly
+    Podporuje LSZ a PP (ČAS/KUSY) protokoly
 
     Args:
         measurement_json: Cesta k measurement_data.json
         results_json: Cesta k results JSON (lsz_results.json nebo pp_results.json)
         template_path: Cesta k Word šabloně
         output_path: Kam uložit vygenerovaný Word
-        protocol_type: Typ protokolu ("LSZ", "PP_CAS", "PP_KUSY", "CFZ")
+        protocol_type: Typ protokolu ("LSZ", "PP_CAS", "PP_KUSY")
     """
     print(f"Generuji Word protokol pro: {protocol_type}")
 
@@ -473,13 +473,33 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
     highlight_force_distribution_values(output_path, input_data, results_data)
     print(f"  ✓ Červené zvýraznění dokončeno")
 
+    # POST-PROCESSING: Zvýrazni LSZ kategorii barevným textem a backgroundem
+    if protocol_type == "LSZ":
+        print(f"  → Zvýrazňuji LSZ kategorii barevným textem a backgroundem...")
+        highlight_lsz_category(output_path, input_data, results_data)
+
+    # POST-PROCESSING: Zvýrazni PP kategorie barevným backgroundem
+    if protocol_type in ["PP_CAS", "PP_KUSY"]:
+        print(f"  → Zvýrazňuji PP kategorie barevným backgroundem...")
+        highlight_pp_categories(output_path, input_data, results_data)
+        print(f"  ✓ PP kategorie zvýrazněny")
+
+        # POST-PROCESSING: Zvýrazni finální PP kategorii (číslo na konci dokumentu)
+        print(f"  → Zvýrazňuji finální PP kategorii barevným textem a backgroundem...")
+        try:
+            highlight_pp_category_number(output_path, input_data, results_data)
+        except Exception as e:
+            print(f"  ⚠ CHYBA při zvýrazňování PP kategorie: {e}")
+            import traceback
+            traceback.print_exc()
+
     # POST-PROCESSING: Odstraň prázdné řádky z tabulek
     print(f"  → Odstraňuji prázdné řádky z tabulek...")
     if protocol_type in ["PP_CAS", "PP_KUSY"]:
         # PP: Odstraň řádky kde vyskyt_min_a, vyskyt_min_b, prumer_min jsou všechny 0
         remove_empty_pp_rows(output_path)
     else:
-        # LSZ/CFZ: Odstraň řádky kde activity = "0"
+        # LSZ: Odstraň řádky kde activity = "0"
         remove_empty_activity_rows(output_path)
 
     # POZNÁMKA: Podmíněný text (požadavek 2) byl vložen PŘED načtením subdokumentu (viz výše)
@@ -695,7 +715,7 @@ def remove_empty_pp_rows(docx_path):
         "Statická", "Dynamická"  # Typy svalové práce - přítomné ve všech PP tabulkách
     ]
 
-    section_keywords = ["TRUP", "HLAVA_KRK", "HLAVA A KRK", "PHK", "LHK", "DOLNÍ KONČETINY", "DKK",
+    section_keywords = ["TRUP", "HLAVA_KRK", "HLAVA A KRK", "PHK", "LHK", "DOLNÍ KONČETINY", "DK", "DKK",
                        "OSTATNÍ ČÁSTI TĚLA", "OSTATNI", "OST", "ULTRATHINK"]
 
     total_deleted = 0
@@ -824,15 +844,50 @@ def remove_empty_pp_rows(docx_path):
             tables_processed += 1
             print(f"  ✓ Smazáno {deleted_count} prázdných řádků z PP tabulky")
 
-        # Pokud jsme smazali VŠECHNY datové řádky NEBO tabulka neměla žádné datové řádky, označ k odstranění
-        if initial_data_rows == 0:
-            # Tabulka neměla žádné datové řádky od začátku
+        # NOVÁ LOGIKA: Po smazání spočítej, kolik SKUTEČNĚ zůstalo datových řádků
+        remaining_data_rows = 0
+        for row_idx in range(1, len(table.rows)):  # Skip row 0 (header)
+            try:
+                nazev_polohy = table.rows[row_idx].cells[0].text.strip()
+                nazev_upper = nazev_polohy.upper().strip()
+
+                # Skip záhlaví
+                is_header = ("NEPŘIJATELNÁ" in nazev_upper or "PODMÍNĚNĚ" in nazev_upper or
+                            "PRACOVNÍ POLOHA" in nazev_upper or "SVALOVÁ PRÁCE" in nazev_upper)
+                if is_header:
+                    continue
+
+                # Skip sekce
+                is_section = nazev_upper in section_keywords or "OSTATNI" in nazev_upper
+                if is_section:
+                    continue
+
+                # Skip header řádky s "VÝSKYT", "MUŽ" atd.
+                has_keywords = False
+                try:
+                    cell2 = table.rows[row_idx].cells[2].text.strip().upper()
+                    cell3 = table.rows[row_idx].cells[3].text.strip().upper()
+                    cell4 = table.rows[row_idx].cells[4].text.strip().upper()
+
+                    if ("VÝSKYT" in cell2 or "VÝSKYT" in cell3 or "VÝSKYT" in cell4 or
+                        "MUŽ" in cell2 or "MUŽ" in cell3 or
+                        "MIN" in cell2 or "MIN" in cell3 or "MIN" in cell4 or
+                        "PRŮMĚR" in cell4 or "PRUMER" in cell4 or
+                        "Ø" in cell4):
+                        has_keywords = True
+                        continue
+                except:
+                    pass
+
+                # Toto je datový řádek (může být prázdný nebo neprázdný)
+                remaining_data_rows += 1
+            except:
+                continue
+
+        # Pokud nezůstaly ŽÁDNÉ datové řádky, označ tabulku k odstranění
+        if remaining_data_rows == 0:
             tables_to_remove.append(table)
-            print(f"  → Tabulka neobsahuje žádné datové řádky - bude odstraněna celá")
-        elif initial_data_rows > 0 and deleted_count == initial_data_rows:
-            # Smazali jsme všechny datové řádky
-            tables_to_remove.append(table)
-            print(f"  → Smazány všechny datové řádky ({deleted_count}/{initial_data_rows}) - tabulka bude odstraněna celá")
+            print(f"  → Po smazání nezůstaly žádné datové řádky - tabulka bude odstraněna celá")
 
     # Odstraň prázdné tabulky
     for table in tables_to_remove:
@@ -861,6 +916,8 @@ if __name__ == "__main__":
     parser.add_argument('output_path', help='Cesta k výstupnímu Word souboru')
     parser.add_argument('--variant', choices=['v1', 'v2', 'v3'], default='v2',
                         help='Varianta generování (v1=vnořená, v2=plochá, v3=prefixovaná)')
+    parser.add_argument('--protocol-type', choices=['LSZ', 'PP_CAS', 'PP_KUSY'], default='LSZ',
+                        help='Typ protokolu (LSZ, PP_CAS, PP_KUSY)')
 
     args = parser.parse_args()
 
@@ -870,7 +927,8 @@ if __name__ == "__main__":
                                   args.template_path, args.output_path)
     elif args.variant == 'v2':
         generate_word_protocol_v2(args.measurement_json, args.results_json,
-                                  args.template_path, args.output_path)
+                                  args.template_path, args.output_path,
+                                  protocol_type=args.protocol_type)
     elif args.variant == 'v3':
         generate_word_protocol_v3(args.measurement_json, args.results_json,
                                   args.template_path, args.output_path)

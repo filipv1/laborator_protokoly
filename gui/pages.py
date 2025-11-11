@@ -264,12 +264,13 @@ class Page0_VyberSouboru(QWizardPage):
         self.checkbox_lsz = QCheckBox("LSZ - Lokální svalová zátěž (LSZ_XX_firma_pozice.xlsm)")
         self.checkbox_pp_cas = QCheckBox("PP - Pracovní polohy - ČAS (PP_XX_firma_pozice[ČAS].xlsx)")
         self.checkbox_pp_kusy = QCheckBox("PP - Pracovní polohy - KUSY (PP_XX_firma_pozice[KUSY].xlsx)")
-        self.checkbox_cfz = QCheckBox("CFZ - Celková fyzická zátěž (CFZ_XX_firma_pozice.xlsx)")
+        # CFZ checkbox skrytý (ponecháno pro budoucnost)
+        # self.checkbox_cfz = QCheckBox("CFZ - Celková fyzická zátěž (CFZ_XX_firma_pozice.xlsx)")
 
         layout.addWidget(self.checkbox_lsz)
         layout.addWidget(self.checkbox_pp_cas)
         layout.addWidget(self.checkbox_pp_kusy)
-        layout.addWidget(self.checkbox_cfz)
+        # layout.addWidget(self.checkbox_cfz)  # Skryto
         layout.addSpacing(20)
 
         # === Počet pracovníků ===
@@ -701,13 +702,9 @@ class Page3_DalsiUdaje(QWizardPage):
         layout = QFormLayout()
         self.setLayout(layout)
 
-        self.prace_vykonavana = QComboBox()
-        self.prace_vykonavana.addItems(["stoj", "sed", "chůze"])
-
         self.co_se_hodnoti = QComboBox()
         self.co_se_hodnoti.addItems(["kusy", "čas"])
 
-        layout.addRow("Práce je vykonávaná:", self.prace_vykonavana)
         layout.addRow("Co se hodnotí:", self.co_se_hodnoti)
 
 
@@ -741,9 +738,6 @@ class Page4_PracovnikA(QWizardPage):
         self.emg_holter_a = QComboBox()
         self.emg_holter_a.addItems(["A", "B", "C", "D", "E", "F"])
 
-        self.polar_a = QComboBox()
-        self.polar_a.addItems(["1", "2", "3", "4", "5", "6", "7", "8"])
-
         self.doba_vykonu_a = QLineEdit()
         self.prestavky_a = QLineEdit()
 
@@ -756,8 +750,6 @@ class Page4_PracovnikA(QWizardPage):
         self.bezpecnostni_prestavka_min_a.setMaximum(9999)
         self.bezpecnostni_prestavka_min_a.setSuffix(" min")
 
-        self.cislo_hrudniho_pasu_a = QLineEdit()
-
         layout.addRow("Jméno a příjmení:", self.jmeno_a)
         layout.addRow("Věk (let):", self.vek_a)
         layout.addRow("Délka expozice (let):", self.delka_expozice_a)
@@ -767,12 +759,10 @@ class Page4_PracovnikA(QWizardPage):
         layout.addRow("Síla stisku ruky PHK (N):", self.sila_phk_a)
         layout.addRow("Síla stisku ruky LHK (N):", self.sila_lhk_a)
         layout.addRow("EMG Holter:", self.emg_holter_a)
-        layout.addRow("Polar:", self.polar_a)
         layout.addRow("Směna (min):", self.doba_vykonu_a)
         layout.addRow("Přestávka na jídlo a oddech (min):", self.prestavky_a)
         layout.addRow("Doba výkonu práce (min):", self.doba_vykonu_min_a)
         layout.addRow("Bezpečnostní přestávka (min):", self.bezpecnostni_prestavka_min_a)
-        layout.addRow("Číslo hrudního pásu:", self.cislo_hrudniho_pasu_a)
 
     def nextId(self):
         """
@@ -819,11 +809,6 @@ class Page5_PracovnikB(QWizardPage):
         self.emg_holter_b = QComboBox()
         self.emg_holter_b.addItems(["A", "B", "C", "D", "E", "F"])
 
-        self.polar_b = QComboBox()
-        self.polar_b.addItems(["1", "2", "3", "4", "5", "6", "7", "8"])
-
-        self.cislo_hrudniho_pasu_b = QLineEdit()
-
         layout.addRow("Jméno a příjmení:", self.jmeno_b)
         layout.addRow("Věk (let):", self.vek_b)
         layout.addRow("Délka expozice (let):", self.delka_expozice_b)
@@ -833,8 +818,6 @@ class Page5_PracovnikB(QWizardPage):
         layout.addRow("Síla stisku ruky PHK (N):", self.sila_phk_b)
         layout.addRow("Síla stisku ruky LHK (N):", self.sila_lhk_b)
         layout.addRow("EMG Holter:", self.emg_holter_b)
-        layout.addRow("Polar:", self.polar_b)
-        layout.addRow("Číslo hrudního pásu:", self.cislo_hrudniho_pasu_b)
 
 
 class Page6_Zaverecne(QWizardPage):

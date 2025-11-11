@@ -92,13 +92,51 @@ class DocxParser:
                     continue  # Tento sloupec už byl přiřazen
 
                 # Zkontroluj jestli header obsahuje nějaký z patternů
+                # WORD-BASED MATCHING: Rozdělím header na slova a testuji každé slovo
+                header_words = header_name.split()
+                match_found = False
+
                 for pattern in patterns:
-                    # Přesnější matching - pattern musí být substring headeru
-                    # NEBO header musí být substring patternu (pro krátké zkratky)
-                    if (pattern in header_name) or (len(pattern) <= 3 and header_name.startswith(pattern)):
-                        column_map[col_type] = idx
-                        assigned_indices.add(idx)
+                    # NORMALIZUJ PATTERN (patterns mohou obsahovat diakritiku)
+                    pattern_normalized = DocxParser._normalize_column_name(pattern)
+
+                    # Přesný match celého headeru (rychlá cesta)
+                    if pattern_normalized in header_name:
+                        match_found = True
                         break
+
+                    # Word-based matching: testuji každé slovo zvlášť
+                    for word in header_words:
+                        # Pro krátké zkratky (≤3 znaky): přesný match začátku
+                        if len(pattern_normalized) <= 3 and word.startswith(pattern_normalized):
+                            match_found = True
+                            break
+
+                        # Pro delší patterns (≥4 znaky): COMMON PREFIX matching (pokrývá české skloňování)
+                        if len(pattern_normalized) >= 4 and len(word) >= 4:
+                            # Pokud jsou slova podobné délky (rozdíl max 3 znaky)
+                            if abs(len(word) - len(pattern_normalized)) <= 3:
+                                # Porovnej common prefix (bez posledních 2 znaků kvůli koncovkám)
+                                compare_len = min(len(word), len(pattern_normalized)) - 2
+                                if compare_len > 0 and word[:compare_len] == pattern_normalized[:compare_len]:
+                                    match_found = True
+                                    break
+                            # Pokud pattern je kratší, zkus standardní startswith
+                            elif len(pattern_normalized) < len(word) and word.startswith(pattern_normalized):
+                                match_found = True
+                                break
+                            # Pokud word je kratší, zkus opačně
+                            elif len(word) < len(pattern_normalized) and pattern_normalized.startswith(word):
+                                match_found = True
+                                break
+
+                    if match_found:
+                        break
+
+                if match_found:
+                    column_map[col_type] = idx
+                    assigned_indices.add(idx)
+                    break
 
                 if column_map[col_type] is not None:
                     break  # Našli jsme match pro tento typ, přejdi na další

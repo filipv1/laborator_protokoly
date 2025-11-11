@@ -1,6 +1,6 @@
 """
 Word Protocol Generator Dialog V2 - Multi-protocol support
-Podporuje generování LSZ, PP a CFZ protokolů z jedné složky projektu
+Podporuje generování LSZ a PP protokolů z jedné složky projektu
 """
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
@@ -15,7 +15,7 @@ import json
 
 
 class ProtocolSection(QWidget):
-    """Widget pro jeden typ protokolu (LSZ/PP/CFZ)"""
+    """Widget pro jeden typ protokolu (LSZ/PP)"""
 
     def __init__(
         self,
@@ -27,7 +27,7 @@ class ProtocolSection(QWidget):
     ):
         """
         Args:
-            protocol_type: Typ protokolu ("LSZ", "PP_CAS", "PP_KUSY", "CFZ")
+            protocol_type: Typ protokolu ("LSZ", "PP_CAS", "PP_KUSY")
             protocol_name: Displayové jméno (např. "LSZ - Lokální svalová zátěž")
             excel_path: Cesta k Excel souboru pro tento protokol
             templates: Seznam [(template_name, template_path), ...]
@@ -124,8 +124,7 @@ class WordProtocolGeneratorDialogV2(QDialog):
     PROTOCOL_NAMES = {
         "LSZ": "LSZ - Lokální svalová zátěž",
         "PP_CAS": "PP - Pracovní polohy (ČAS)",
-        "PP_KUSY": "PP - Pracovní polohy (KUSY)",
-        "CFZ": "CFZ - Celková fyzická zátěž"
+        "PP_KUSY": "PP - Pracovní polohy (KUSY)"
     }
 
     def __init__(self, parent=None):
@@ -364,11 +363,6 @@ class WordProtocolGeneratorDialogV2(QDialog):
         if pp_kusy_files:
             protocols["PP_KUSY"] = pp_kusy_files[0]
 
-        # CFZ
-        cfz_files = list(self.project_folder.glob("CFZ_*.xlsx"))
-        if cfz_files:
-            protocols["CFZ"] = cfz_files[0]
-
         return protocols
 
     def _get_templates_for_protocol(self, protocol_type: str) -> List[Tuple[str, Path]]:
@@ -376,13 +370,13 @@ class WordProtocolGeneratorDialogV2(QDialog):
         Vrátí dostupné templates pro daný protokol
 
         Args:
-            protocol_type: "LSZ", "PP_CAS", "PP_KUSY", "CFZ"
+            protocol_type: "LSZ", "PP_CAS", "PP_KUSY"
 
         Returns:
             List[(template_display_name, template_path), ...]
         """
         # Template mapping: (protocol, worker_count, gender) → [(name, path), ...]
-        # POZOR: Zatím máme jen LSZ templates, PP a CFZ jsou placeholdery!
+        # POZOR: Zatím máme jen LSZ templates, PP jsou placeholdery!
 
         key = (protocol_type, self.worker_count, self.gender)
 
@@ -414,14 +408,6 @@ class WordProtocolGeneratorDialogV2(QDialog):
             ],
             ("PP_KUSY", 2, "ženy"): [
                 ("PP KUSY - 2 ženy (testovací)", "Autorizované protokoly pro MUŽE", "PP_XX_Firma_Pozice.docx"),
-            ],
-
-            # CFZ templates (BUDOUCNOST - zatím neexistují)
-            ("CFZ", 2, "muži"): [
-                ("CFZ - 2 muži (TODO)", "Autorizované protokoly pro MUŽE", "CFZ_placeholdery_v2.docx"),
-            ],
-            ("CFZ", 2, "ženy"): [
-                ("CFZ - 2 ženy (TODO)", "Autorizované protokoly pro ŽENY", "CFZ_placeholdery_v2_females.docx"),
             ],
         }
 

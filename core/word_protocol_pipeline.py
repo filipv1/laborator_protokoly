@@ -1,6 +1,6 @@
 """
 Word Protocol Pipeline - kompletní pipeline pro generování Word protokolů
-Podporuje LSZ, PP a CFZ protokoly
+Podporuje LSZ a PP protokoly
 """
 import json
 from pathlib import Path
@@ -10,7 +10,7 @@ from read_pp_results import read_pp_results
 from generate_word_from_two_sources import generate_word_protocol_v2, generate_word_protocol_v1
 
 # Type hint pro protocol types
-ProtocolType = Literal["LSZ", "PP_CAS", "PP_KUSY", "CFZ"]
+ProtocolType = Literal["LSZ", "PP_CAS", "PP_KUSY"]
 
 
 class WordProtocolPipeline:
@@ -34,10 +34,10 @@ class WordProtocolPipeline:
             excel_path: Cesta k Excel souboru
 
         Returns:
-            Protocol type ("LSZ", "PP_CAS", "PP_KUSY", "CFZ")
+            Protocol type ("LSZ", "PP_CAS", "PP_KUSY")
 
         Raises:
-            ValueError: Pokud nelze detekovat protokol
+            ValueError: Pokud nelze detekovat protokol nebo pokud je CFZ
         """
         name = excel_path.name.upper()
 
@@ -48,11 +48,14 @@ class WordProtocolPipeline:
         elif "_KUSY" in name and name.startswith("PP_"):
             return "PP_KUSY"
         elif name.startswith("CFZ_"):
-            return "CFZ"
+            raise ValueError(
+                f"CFZ protokoly nejsou podporovány pro Word generování!\n"
+                f"Podporované protokoly: LSZ, PP_CAS, PP_KUSY"
+            )
         else:
             raise ValueError(
                 f"Nelze detekovat typ protokolu z názvu souboru: {excel_path.name}\n"
-                f"Očekávané formáty: LSZ_*.xlsm, PP_*_CAS.xlsx, PP_*_KUSY.xlsx, CFZ_*.xlsx"
+                f"Očekávané formáty: LSZ_*.xlsm, PP_*_CAS.xlsx, PP_*_KUSY.xlsx"
             )
 
     def generate_protocol(
@@ -63,7 +66,7 @@ class WordProtocolPipeline:
     ) -> tuple[bool, str]:
         """
         Kompletní pipeline pro generování Word protokolů
-        Podporuje LSZ, PP (ČAS/KUSY) a CFZ protokoly
+        Podporuje LSZ a PP (ČAS/KUSY) protokoly
 
         Pipeline:
         1. Detekuje typ protokolu z názvu Excel souboru
@@ -73,7 +76,7 @@ class WordProtocolPipeline:
         5. Spustí generate_word_protocol_v2 s protocol_type parametrem
 
         Args:
-            excel_path: Cesta k Excel souboru (LSZ/PP/CFZ)
+            excel_path: Cesta k Excel souboru (LSZ/PP)
             template_path: Cesta k Word šabloně
             output_path: Kam uložit výsledný Word protokol
 
@@ -126,9 +129,6 @@ class WordProtocolPipeline:
                 what_is_evaluated_pp = "cas" if protocol_type == "PP_CAS" else "kusy"
                 results = read_pp_results(str(excel_path), what_is_evaluated_pp, worker_count)
                 self.results_json_path = self.project_folder / "pp_results.json"
-            elif protocol_type == "CFZ":
-                # CFZ zatím není implementován
-                return False, f"CFZ protokol zatím není implementován!"
             else:
                 return False, f"Neznámý typ protokolu: {protocol_type}"
 

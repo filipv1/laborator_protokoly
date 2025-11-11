@@ -39,7 +39,7 @@ class MainMenuWindow(QMainWindow):
 
         # Button 1: Excel workflow
         btn_excel = QPushButton()
-        btn_excel.setText("📊 NOVÝ PROJEKT\n\nVytvořit měření + Excel soubory\n(LSZ, PP, CFZ)")
+        btn_excel.setText("📊 NOVÝ PROJEKT\n\nVytvořit měření + Excel soubory\n(LSZ, PP)")
         btn_excel.setMinimumHeight(120)
         btn_excel.setStyleSheet("""
             QPushButton {

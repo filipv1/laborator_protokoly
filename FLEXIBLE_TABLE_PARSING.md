@@ -358,6 +358,14 @@ result = DocxParser.parse_time_schedule_table(docx_path)
 
 ## 📝 Changelog
 
+### v2.0.1 (2025-11-10) - HOTFIX
+- 🔧 **OPRAVA**: Common prefix matching pro české skloňování
+- ✅ Problém: "operaci" vs "operace" se nematchoval kvůli stejné délce
+- ✅ Řešení: Porovnání common prefix (bez posledních 2 znaků = koncovky)
+- ✅ Testováno na 3 reálných souborech s názvem "Rozpis pracovních operací"
+- ✅ Všechny 3 soubory úspěšně načteny
+- ✅ Backward compatibility zachována (27 projektů)
+
 ### v2.0.0 (2025-11-10)
 - ✅ Přidán fuzzy matching názvů sloupců
 - ✅ Flexibilní načítání s chybějícími sloupci

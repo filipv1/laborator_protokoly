@@ -77,7 +77,7 @@ class MeasurementGUI(QWizard):
                 "generate_lsz": self.page0.checkbox_lsz.isChecked(),
                 "generate_pp_time": self.page0.checkbox_pp_cas.isChecked(),
                 "generate_pp_pieces": self.page0.checkbox_pp_kusy.isChecked(),
-                "generate_cfz": self.page0.checkbox_cfz.isChecked(),
+                "generate_cfz": False,  # CFZ skryto z GUI (kód ponechán pro budoucnost)
                 "worker_count": self.page0.worker_count_group.checkedId(),  # 1 nebo 2
                 "workers_gender": self.page0.gender_combo.currentText().lower()  # "muži" nebo "ženy"
             },
@@ -102,7 +102,6 @@ class MeasurementGUI(QWizard):
                 "measurement_days": int(self.page2.pocet_dni_mereni.currentText())
             },
             "section3_additional_data": {
-                "work_performed": self.page3.prace_vykonavana.currentText(),
                 "what_is_evaluated": self.page3.co_se_hodnoti.currentText()
             },
             "section4_worker_a": {
@@ -116,12 +115,10 @@ class MeasurementGUI(QWizard):
                 "grip_strength_phk_n": self.page4.sila_phk_a.value(),
                 "grip_strength_lhk_n": self.page4.sila_lhk_a.value(),
                 "emg_holter": self.page4.emg_holter_a.currentText(),
-                "polar": self.page4.polar_a.currentText(),
                 "work_duration": self.page4.doba_vykonu_a.text(),
                 "breaks": self.page4.prestavky_a.text(),
                 "work_duration_min": self.page4.doba_vykonu_min_a.value(),
-                "safety_break_min": self.page4.bezpecnostni_prestavka_min_a.value(),
-                "chest_strap_number": self.page4.cislo_hrudniho_pasu_a.text()
+                "safety_break_min": self.page4.bezpecnostni_prestavka_min_a.value()
             },
             "section5_worker_b": {
                 "full_name": self.page5.jmeno_b.text(),
@@ -133,9 +130,7 @@ class MeasurementGUI(QWizard):
                 "laterality": self.page5.lateralita_b.currentText(),
                 "grip_strength_phk_n": self.page5.sila_phk_b.value(),
                 "grip_strength_lhk_n": self.page5.sila_lhk_b.value(),
-                "emg_holter": self.page5.emg_holter_b.currentText(),
-                "polar": self.page5.polar_b.currentText(),
-                "chest_strap_number": self.page5.cislo_hrudniho_pasu_b.text()
+                "emg_holter": self.page5.emg_holter_b.currentText()
             },
             "section6_final": {
                 "measured_by": self.page6.mereni_provedl.text()
@@ -165,7 +160,7 @@ class MeasurementGUI(QWizard):
                 f"Projekt úspěšně vytvořen:\n{project_folder.absolute()}\n\n"
                 f"Vygenerované soubory:\n"
                 f"• measurement_data.json\n"
-                f"• Excel soubory (LSZ, PP, CFZ)\n\n"
+                f"• Excel soubory (LSZ, PP)\n\n"
                 f"Nyní můžete:\n"
                 f"1. Otevřít Excel soubory a spustit makra\n"
                 f"2. Zkontrolovat/upravit data\n"
