@@ -396,18 +396,30 @@ class WordProtocolGeneratorDialogV2(QDialog):
                 ("LSZ - 1 žena", "Jeden zaměstnanec", "LSZ_jedna_ŽENA.DOCX"),
             ],
 
-            # PP templates (TESTOVACÍ - skutečný template existuje)
+            # PP templates (ČAS/KUSY používají stejnou šablonu)
             ("PP_CAS", 2, "muži"): [
                 ("PP ČAS - 2 muži (testovací)", "Autorizované protokoly pro MUŽE", "PP_XX_Firma_Pozice.docx"),
             ],
             ("PP_CAS", 2, "ženy"): [
                 ("PP ČAS - 2 ženy (testovací)", "Autorizované protokoly pro MUŽE", "PP_XX_Firma_Pozice.docx"),
             ],
+            ("PP_CAS", 1, "muži"): [
+                ("PP ČAS - 1 muž", "Jeden zaměstnanec", "PP_jeden_MUŽ.docx"),
+            ],
+            ("PP_CAS", 1, "ženy"): [
+                ("PP ČAS - 1 žena", "Jeden zaměstnanec", "PP_jeden_females.docx"),
+            ],
             ("PP_KUSY", 2, "muži"): [
                 ("PP KUSY - 2 muži (testovací)", "Autorizované protokoly pro MUŽE", "PP_XX_Firma_Pozice.docx"),
             ],
             ("PP_KUSY", 2, "ženy"): [
                 ("PP KUSY - 2 ženy (testovací)", "Autorizované protokoly pro MUŽE", "PP_XX_Firma_Pozice.docx"),
+            ],
+            ("PP_KUSY", 1, "muži"): [
+                ("PP KUSY - 1 muž", "Jeden zaměstnanec", "PP_jeden_MUŽ.docx"),
+            ],
+            ("PP_KUSY", 1, "ženy"): [
+                ("PP KUSY - 1 žena", "Jeden zaměstnanec", "PP_jeden_females.docx"),
             ],
         }
 

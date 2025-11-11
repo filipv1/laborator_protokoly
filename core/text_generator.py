@@ -1007,9 +1007,43 @@ def _format_pp_position_name(typ_svalove_prace: str, nazev_polohy: str) -> str:
         return "neznámá poloha"
 
 
+def _is_single_worker_protocol(measurement_data: Dict[str, Any]) -> bool:
+    """
+    Detekuje, jestli jde o protokol pro jednoho pracovníka.
+
+    Kontroluje, jestli section5_worker_b má vyplněné full_name.
+    Pokud je full_name prázdný string nebo whitespace, jde o single-worker protokol.
+
+    Args:
+        measurement_data: Data z measurement_data.json
+
+    Returns:
+        True pokud je single-worker protokol (worker_b nemá jméno), jinak False
+
+    Examples:
+        >>> # Single worker (prázdné jméno)
+        >>> data = {"section5_worker_b": {"full_name": ""}}
+        >>> _is_single_worker_protocol(data)
+        True
+
+        >>> # Two workers (vyplněné jméno)
+        >>> data = {"section5_worker_b": {"full_name": "Jan Novák"}}
+        >>> _is_single_worker_protocol(data)
+        False
+    """
+    worker_b = measurement_data.get("section5_worker_b", {})
+    full_name = worker_b.get("full_name", "")
+
+    # Pokud je full_name prázdný string, None nebo whitespace, je to single-worker
+    is_single = not bool(full_name.strip() if full_name else False)
+
+    return is_single
+
+
 def _get_pp_max_category(
     results_data: Dict[str, Any],
-    category_limits: Dict[str, Any]
+    category_limits: Dict[str, Any],
+    use_worker_a_only: bool = False
 ) -> int:
     """
     Určí nejvyšší kategorii pracovních poloh (1, 2, nebo 3).
@@ -1017,9 +1051,13 @@ def _get_pp_max_category(
     Projde všechny sekce a polohy, vypočítá jejich kategorie podle limitů,
     a vrátí nejvyšší nalezenou kategorii.
 
+    Pro single-worker protokoly (use_worker_a_only=True) používá vyskyt_min_a,
+    pro two-worker protokoly používá prumer_min.
+
     Args:
         results_data: pp_results.json s daty o polohách
         category_limits: Dictionary s limity kategorií (pp_kat1_max, n_kat1_max, atd.)
+        use_worker_a_only: Pokud True, používá vyskyt_min_a místo prumer_min
 
     Returns:
         1, 2, nebo 3 (nejvyšší kategorie)
@@ -1041,25 +1079,30 @@ def _get_pp_max_category(
             if not isinstance(row_data, dict):
                 continue
 
-            prumer_min = row_data.get("prumer_min", 0)
+            # Vybrat správnou hodnotu podle módu
+            if use_worker_a_only:
+                comparison_value = row_data.get("vyskyt_min_a", 0)
+            else:
+                comparison_value = row_data.get("prumer_min", 0)
+
             typ = row_data.get("typ_pracovni_polohy", "N")
 
-            # Skip pokud je prumer_min 0 nebo None
-            if prumer_min == 0 or prumer_min is None:
+            # Skip pokud je hodnota 0 nebo None
+            if comparison_value == 0 or comparison_value is None:
                 continue
 
             # Určit kategorii podle typu a limitů
             if typ == "PP":
-                if prumer_min <= category_limits["pp_kat1_max"]:
+                if comparison_value <= category_limits["pp_kat1_max"]:
                     category = 1
-                elif prumer_min <= category_limits["pp_kat2_max"]:
+                elif comparison_value <= category_limits["pp_kat2_max"]:
                     category = 2
                 else:
                     category = 3
             else:  # typ == "N"
-                if prumer_min <= category_limits["n_kat1_max"]:
+                if comparison_value <= category_limits["n_kat1_max"]:
                     category = 1
-                elif prumer_min <= category_limits["n_kat2_max"]:
+                elif comparison_value <= category_limits["n_kat2_max"]:
                     category = 2
                 else:
                     category = 3
@@ -1073,22 +1116,27 @@ def _get_pp_max_category(
 
 def _get_pp_problematic_positions_list(
     results_data: Dict[str, Any],
-    category_limits: Dict[str, Any]
+    category_limits: Dict[str, Any],
+    use_worker_a_only: bool = False
 ) -> str:
     """
     Vrací POUZE seznam problematických poloh (nejvyšší kategorie), oddělených čárkou.
     Použití v šabloně jako samostatný placeholder.
 
+    Pro single-worker protokoly (use_worker_a_only=True) používá vyskyt_min_a,
+    pro two-worker protokoly používá prumer_min.
+
     Args:
         results_data: pp_results.json s daty o polohách
         category_limits: Dictionary s limity kategorií (pp_kat1_max, n_kat1_max, atd.)
+        use_worker_a_only: Pokud True, používá vyskyt_min_a místo prumer_min
 
     Returns:
         Čárkou oddělený seznam poloh (např. "dynamické předklon trupu, statické otočení hlavy")
         Prázdný string pokud není žádná problematická poloha
     """
-    # Nejdřív zjisti max kategorii
-    max_category = _get_pp_max_category(results_data, category_limits)
+    # Nejdřív zjisti max kategorii (předat parametr!)
+    max_category = _get_pp_max_category(results_data, category_limits, use_worker_a_only)
 
     if max_category == 1:
         return ""  # Žádné problémy
@@ -1112,26 +1160,31 @@ def _get_pp_problematic_positions_list(
             if not isinstance(row_data, dict):
                 continue
 
-            prumer_min = row_data.get("prumer_min", 0)
+            # Vybrat správnou hodnotu podle módu
+            if use_worker_a_only:
+                comparison_value = row_data.get("vyskyt_min_a", 0)
+            else:
+                comparison_value = row_data.get("prumer_min", 0)
+
             typ = row_data.get("typ_pracovni_polohy", "N")
             typ_svalove_prace = row_data.get("typ_svalove_prace", "")
             nazev_polohy = row_data.get("nazev_polohy", "")
 
-            if prumer_min == 0 or prumer_min is None:
+            if comparison_value == 0 or comparison_value is None:
                 continue
 
             # Určit kategorii podle typu a limitů
             if typ == "PP":
-                if prumer_min <= category_limits["pp_kat1_max"]:
+                if comparison_value <= category_limits["pp_kat1_max"]:
                     category = 1
-                elif prumer_min <= category_limits["pp_kat2_max"]:
+                elif comparison_value <= category_limits["pp_kat2_max"]:
                     category = 2
                 else:
                     category = 3
             else:  # typ == "N"
-                if prumer_min <= category_limits["n_kat1_max"]:
+                if comparison_value <= category_limits["n_kat1_max"]:
                     category = 1
-                elif prumer_min <= category_limits["n_kat2_max"]:
+                elif comparison_value <= category_limits["n_kat2_max"]:
                     category = 2
                 else:
                     category = 3
@@ -1154,13 +1207,17 @@ def _get_pp_problematic_positions_list(
 
 def _calculate_prvni_pp_podminka_kategorie(
     results_data: Dict[str, Any],
-    category_limits: Dict[str, Any]
+    category_limits: Dict[str, Any],
+    use_worker_a_only: bool = False
 ) -> str:
     """
-    První PP podmínka: Kategorizace pracovních poloh podle času v průměru.
+    První PP podmínka: Kategorizace pracovních poloh podle času.
 
     Projde všechny sekce (trup, hlava_krk, phk, lhk, dk, ostatni) a pro každý řádek
-    určí kategorii (1, 2, nebo 3) podle prumer_min a typ_pracovni_polohy.
+    určí kategorii (1, 2, nebo 3) podle času a typ_pracovni_polohy.
+
+    Pro single-worker protokoly (use_worker_a_only=True) používá vyskyt_min_a,
+    pro two-worker protokoly používá prumer_min.
 
     Logika:
     - Pokud VŠECHNY polohy jsou kategorie 1 → text kategorie 1
@@ -1170,6 +1227,7 @@ def _calculate_prvni_pp_podminka_kategorie(
     Args:
         results_data: pp_results.json s daty o polohách
         category_limits: Dictionary s limity kategorií (pp_kat1_max, n_kat1_max, atd.)
+        use_worker_a_only: Pokud True, používá vyskyt_min_a místo prumer_min
 
     Returns:
         Text podle nejvyšší nalezené kategorie
@@ -1202,27 +1260,32 @@ def _calculate_prvni_pp_podminka_kategorie(
             if not isinstance(row_data, dict):
                 continue
 
-            prumer_min = row_data.get("prumer_min", 0)
+            # Vybrat správnou hodnotu podle módu
+            if use_worker_a_only:
+                comparison_value = row_data.get("vyskyt_min_a", 0)
+            else:
+                comparison_value = row_data.get("prumer_min", 0)
+
             typ = row_data.get("typ_pracovni_polohy", "N")
             typ_svalove_prace = row_data.get("typ_svalove_prace", "")
             nazev_polohy = row_data.get("nazev_polohy", "")
 
-            # Skip pokud je prumer_min 0, null nebo prázdný (nenaměřená poloha)
-            if prumer_min == 0 or prumer_min is None:
+            # Skip pokud je hodnota 0, null nebo prázdná (nenaměřená poloha)
+            if comparison_value == 0 or comparison_value is None:
                 continue
 
             # Určit kategorii podle typu a limitů
             if typ == "PP":
-                if prumer_min <= category_limits["pp_kat1_max"]:
+                if comparison_value <= category_limits["pp_kat1_max"]:
                     category = 1
-                elif prumer_min <= category_limits["pp_kat2_max"]:
+                elif comparison_value <= category_limits["pp_kat2_max"]:
                     category = 2
                 else:
                     category = 3
             else:  # typ == "N"
-                if prumer_min <= category_limits["n_kat1_max"]:
+                if comparison_value <= category_limits["n_kat1_max"]:
                     category = 1
-                elif prumer_min <= category_limits["n_kat2_max"]:
+                elif comparison_value <= category_limits["n_kat2_max"]:
                     category = 2
                 else:
                     category = 3
@@ -1311,7 +1374,16 @@ def generate_conditional_texts(
 
     # Pro PP protokoly: použij stub implementaci (zatím jen prvni_text_podminka)
     if protocol_type in ("PP_CAS", "PP_KUSY"):
-        print(f"Generuji PP podminkove texty (stub)")
+        print(f"Generuji PP podminkove texty")
+
+        # Detekovat single-worker mód
+        is_single_worker = _is_single_worker_protocol(measurement_data)
+
+        if is_single_worker:
+            print("  [INFO] Single-worker protocol detected - using worker A data (vyskyt_min_a)")
+        else:
+            print("  [INFO] Two-worker protocol - using average data (prumer_min)")
+
         # PP má jen generickou prvni_text_podminka
         section0 = measurement_data.get("section0_file_selection", {})
         section2 = measurement_data.get("section2_firma", {})
@@ -1361,14 +1433,16 @@ def generate_conditional_texts(
         if results_data is not None:
             texts["prvni_pp_podminka_kategorie"] = _calculate_prvni_pp_podminka_kategorie(
                 results_data,
-                category_limits
+                category_limits,
+                use_worker_a_only=is_single_worker
             )
             print(f"  PP kategorizace: {texts['prvni_pp_podminka_kategorie'][:50].encode('ascii', 'replace').decode('ascii')}...")
 
             # PP SEZNAM: Pouze seznam problematických poloh (pro samostatné použití v šabloně)
             texts["pp_problematicke_polohy_seznam"] = _get_pp_problematic_positions_list(
                 results_data,
-                category_limits
+                category_limits,
+                use_worker_a_only=is_single_worker
             )
             if texts["pp_problematicke_polohy_seznam"]:
                 print(f"  PP seznam problémových poloh: {texts['pp_problematicke_polohy_seznam'][:80].encode('ascii', 'replace').decode('ascii')}...")
@@ -1376,9 +1450,13 @@ def generate_conditional_texts(
                 print("  PP seznam problémových poloh: (prázdný - kategorie 1)")
 
             # PP KATEGORIE ČÍSLO: Pouze číslo nejvyšší kategorie (1, 2, nebo 3)
-            max_category_number = _get_pp_max_category(results_data, category_limits)
+            max_category_number = _get_pp_max_category(
+                results_data,
+                category_limits,
+                use_worker_a_only=is_single_worker
+            )
             texts["pp_kategorie_cislo"] = str(max_category_number)
-            print(f"  PP kategorie číslo: {texts['pp_kategorie_cislo']}")
+            print(f"  PP kategorie cislo: {texts['pp_kategorie_cislo']}")
 
             # PP PŘEKROČENÁ KATEGORIE: Číslo kategorie, která byla překročena (0, 1, nebo 2)
             # Kategorie 1 → překročena 0 (žádná)
@@ -1388,7 +1466,7 @@ def generate_conditional_texts(
                 texts["pp_prekocrena_kategorie"] = ""
             else:
                 texts["pp_prekocrena_kategorie"] = str(max_category_number - 1)
-            print(f"  PP překročená kategorie: '{texts['pp_prekocrena_kategorie']}'")
+            print(f"  PP prekrocena kategorie: '{texts['pp_prekocrena_kategorie']}'")
         else:
             texts["prvni_pp_podminka_kategorie"] = "PP results data not available"
             texts["pp_problematicke_polohy_seznam"] = ""
@@ -1785,7 +1863,8 @@ def is_pp_table(table) -> bool:
     Zkontroluje, jestli je tabulka PP tabulka (pracovní polohy).
 
     PP tabulka má:
-    - 6 sloupců (nazev, typ_prace, vyskyt_a, vyskyt_b, prumer, typ_pp)
+    - 6 sloupců (two-worker: nazev, typ_prace, vyskyt_a, vyskyt_b, prumer, typ_pp)
+    - 4 sloupce (single-worker: nazev, typ_prace, vyskyt_a, typ_pp)
     - Obsahuje klíčová slova: TRUP, HLAVA_KRK, PHK, LHK, atd.
 
     Args:
@@ -1794,8 +1873,8 @@ def is_pp_table(table) -> bool:
     Returns:
         True pokud je to PP tabulka, False jinak
     """
-    # Kontrola počtu sloupců
-    if len(table.columns) != 6:
+    # Kontrola počtu sloupců (4 nebo 6)
+    if len(table.columns) not in [4, 6]:
         return False
 
     # Klíčová slova pro PP tabulky
@@ -1941,6 +2020,23 @@ def highlight_pp_categories(
         print(f"  → Zpracovávám PP tabulku (index {table_idx})")
         tables_processed += 1
 
+        # Detekuj single-worker vs two-worker
+        num_cols = len(table.columns)
+        is_single_worker = (num_cols == 4)
+
+        # Určit indexy sloupců podle typu
+        if is_single_worker:
+            # 4 sloupce: 0=název, 1=typ_práce, 2=vyskyt_a, 3=typ_polohy
+            vyskyt_a_idx = 2
+            typ_polohy_idx = 3
+            value_columns = [2]  # Jen vyskyt_a
+        else:
+            # 6 sloupců: 0=název, 1=typ_práce, 2=vyskyt_a, 3=vyskyt_b, 4=prumer, 5=typ_polohy
+            vyskyt_a_idx = 2
+            prumer_idx = 4
+            typ_polohy_idx = 5
+            value_columns = [2, 3, 4]  # vyskyt_a, vyskyt_b, prumer
+
         # Projdi datové řádky (skip řádek 0 = hlavička)
         for row_idx in range(1, len(table.rows)):
             row = table.rows[row_idx]
@@ -1948,7 +2044,7 @@ def highlight_pp_categories(
             # Bezpečné čtení hodnot
             try:
                 nazev_polohy = row.cells[0].text.strip()
-                typ_pracovni_polohy = row.cells[5].text.strip()  # "N" nebo "PP"
+                typ_pracovni_polohy = row.cells[typ_polohy_idx].text.strip()  # "N" nebo "PP"
             except (IndexError, AttributeError):
                 continue
 
@@ -1961,15 +2057,21 @@ def highlight_pp_categories(
             if any(keyword in nazev_upper for keyword in ["NEPŘIJATELNÁ", "PODMÍNĚNĚ", "PRACOVNÍ POLOHA", "SVALOVÁ PRÁCE"]):
                 continue
 
-            # Načti průměr (sloupec 4) pro výpočet kategorie
+            # Načti hodnotu pro výpočet kategorie
             try:
-                prumer_text = row.cells[4].text.strip()
-                prumer_min = float(prumer_text.replace(",", "."))
+                if is_single_worker:
+                    # Pro single-worker používej vyskyt_a
+                    value_text = row.cells[vyskyt_a_idx].text.strip()
+                else:
+                    # Pro two-worker používej průměr
+                    value_text = row.cells[prumer_idx].text.strip()
+
+                value_min = float(value_text.replace(",", "."))
             except (ValueError, IndexError, AttributeError):
                 continue
 
-            # Skip prázdné řádky (prumer_min == 0)
-            if prumer_min == 0 or prumer_min is None:
+            # Skip prázdné řádky (value_min == 0)
+            if value_min == 0 or value_min is None:
                 continue
 
             # Skip pokud typ_pracovni_polohy není "N" nebo "PP"
@@ -1977,10 +2079,10 @@ def highlight_pp_categories(
                 continue
 
             # Vypočítej kategorii
-            category = calculate_pp_category(prumer_min, typ_pracovni_polohy, category_limits)
+            category = calculate_pp_category(value_min, typ_pracovni_polohy, category_limits)
 
-            # Zvýrazni buňky 2, 3, 4 (vyskyt_min_a, vyskyt_min_b, prumer_min)
-            for col_idx in [2, 3, 4]:
+            # Zvýrazni příslušné buňky
+            for col_idx in value_columns:
                 try:
                     cell = row.cells[col_idx]
                     cell_text = cell.text.strip()

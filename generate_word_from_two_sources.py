@@ -725,9 +725,14 @@ def remove_empty_pp_rows(docx_path):
 
     # Projdi VŠECHNY tabulky v dokumentu
     for table_idx, table in enumerate(doc.tables):
-        # Zkontroluj, jestli má tabulka 6 sloupců (PP tabulky mají 6 sloupců)
-        if len(table.columns) != 6:
+        # Zkontroluj, jestli má tabulka 4 nebo 6 sloupců
+        # 6 sloupců: two-worker (A, B, průměr)
+        # 4 sloupce: single-worker (jen A)
+        num_cols = len(table.columns)
+        if num_cols not in [4, 6]:
             continue
+
+        is_single_worker = (num_cols == 4)
 
         # Zkontroluj, jestli tabulka obsahuje PP keywords (aby se vyloučily jiné 6-sloupcové tabulky)
         is_pp_table = False
@@ -798,20 +803,30 @@ def remove_empty_pp_rows(docx_path):
                 except (IndexError, AttributeError):
                     nazev_polohy = ""
 
-                try:
-                    vyskyt_a = cells[2].text.strip()
-                except (IndexError, AttributeError):
-                    vyskyt_a = "0"  # Default 0 pro chybějící hodnoty
+                # Pro single-worker (4 sloupce): 0=název, 1=typ_práce, 2=vyskyt_a, 3=typ_polohy
+                # Pro two-worker (6 sloupců): 0=název, 1=typ_práce, 2=vyskyt_a, 3=vyskyt_b, 4=prumer, 5=typ_polohy
+                if is_single_worker:
+                    try:
+                        vyskyt_a = cells[2].text.strip()
+                    except (IndexError, AttributeError):
+                        vyskyt_a = "0"
+                    vyskyt_b = "0"  # Není sloupec pro B
+                    prumer = "0"    # Není sloupec pro průměr
+                else:
+                    try:
+                        vyskyt_a = cells[2].text.strip()
+                    except (IndexError, AttributeError):
+                        vyskyt_a = "0"
 
-                try:
-                    vyskyt_b = cells[3].text.strip()
-                except (IndexError, AttributeError):
-                    vyskyt_b = "0"  # Default 0
+                    try:
+                        vyskyt_b = cells[3].text.strip()
+                    except (IndexError, AttributeError):
+                        vyskyt_b = "0"
 
-                try:
-                    prumer = cells[4].text.strip()
-                except (IndexError, AttributeError):
-                    prumer = "0"  # Default 0
+                    try:
+                        prumer = cells[4].text.strip()
+                    except (IndexError, AttributeError):
+                        prumer = "0"
 
                 # Přeskoč section nadpisy (TRUP, HLAVA_KRK, atd.)
                 # Section header je POUZE pokud je to PŘESNĚ klíčové slovo (ne součást delšího textu)
@@ -825,13 +840,30 @@ def remove_empty_pp_rows(docx_path):
 
                 # DEBUG: Pro PP tabulky, vypiš co se děje
                 if not is_section_header:
-                    all_zero = is_empty_or_zero(vyskyt_a) and is_empty_or_zero(vyskyt_b) and is_empty_or_zero(prumer)
+                    # Single-worker: kontroluj jen vyskyt_a
+                    # Two-worker: kontroluj všechny 3 hodnoty
+                    if is_single_worker:
+                        all_zero = is_empty_or_zero(vyskyt_a)
+                    else:
+                        all_zero = is_empty_or_zero(vyskyt_a) and is_empty_or_zero(vyskyt_b) and is_empty_or_zero(prumer)
+
                     # Vypsat pouze řádky, které budou smazány
                     if all_zero:
-                        print(f"      Table {table_idx}, Row {row_idx}: SMAŽE '{nazev_polohy[:40]}...' [{vyskyt_a},{vyskyt_b},{prumer}]")
+                        if is_single_worker:
+                            print(f"      Table {table_idx}, Row {row_idx}: SMAŽE '{nazev_polohy[:40]}...' [{vyskyt_a}]")
+                        else:
+                            print(f"      Table {table_idx}, Row {row_idx}: SMAŽE '{nazev_polohy[:40]}...' [{vyskyt_a},{vyskyt_b},{prumer}]")
 
-                # Pokud VŠECHNY tři hodnoty jsou 0 nebo prázdné → smaž řádek
-                if is_empty_or_zero(vyskyt_a) and is_empty_or_zero(vyskyt_b) and is_empty_or_zero(prumer):
+                # Pokud hodnoty jsou 0 nebo prázdné → smaž řádek
+                should_delete = False
+                if is_single_worker:
+                    # Single-worker: smaž pokud vyskyt_a je prázdný
+                    should_delete = is_empty_or_zero(vyskyt_a)
+                else:
+                    # Two-worker: smaž pokud VŠECHNY tři hodnoty jsou prázdné
+                    should_delete = is_empty_or_zero(vyskyt_a) and is_empty_or_zero(vyskyt_b) and is_empty_or_zero(prumer)
+
+                if should_delete:
                     table._element.remove(table.rows[row_idx]._element)
                     deleted_count += 1
 

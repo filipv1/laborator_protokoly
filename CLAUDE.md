@@ -88,6 +88,21 @@ ls projects/
 
 # Debug 11th conditional text (hierarchical load evaluation)
 python debug_jedenacta_podminka.py
+
+# Test Czech declension system
+python test_czech_declension.py
+
+# Test flexible Word document parsing (backward compatibility)
+python test_backward_compatibility.py
+python test_flexible_docx_parsing.py
+
+# Test LSZ pieces count fix
+python test_lsz_pieces_fix.py
+
+# Test PP single-worker mode
+python test_pp_single_worker_detection.py  # Detection test
+python test_pp_single_vs_dual_worker_logic.py  # Value selection test
+python test_pp_single_worker_integration.py  # Integration test
 ```
 
 ## Architecture
@@ -221,6 +236,25 @@ The universal `copy_time_schedule()` method dispatches to the correct handler ba
 - Počet kusů: "počet", "kusy", "pieces", "ks", "count"
 
 **Viz podrobná dokumentace:** `FLEXIBLE_TABLE_PARSING.md`
+
+### Czech Declension System (PP Protocols)
+PP protocol generation includes automatic Czech declension for grammatically correct position names:
+- **Location:** `core/text_generator.py` - `_get_declined_position_name()` function
+- **Purpose:** Converts nominative case to genitive case for natural Czech text (e.g., "dynamický předklon" → "dynamického předklonu")
+- **Coverage:** Handles ~50 body position terms with proper declension rules
+- **Usage:** Automatically applied in `pp_problematicke_polohy_seznam` placeholder
+- **Examples:**
+  - "statický předklon trupu" → "statického předklonu trupu"
+  - "dynamické otočení hlavy" → "dynamického otočení hlavy"
+  - "předpažení PHK" → "předpažení PHK" (no change needed)
+
+### LSZ Pieces Count Handling
+LSZ Excel files now properly handle "Počet kusů" (pieces count) from time schedules:
+- **Location:** `core/table_copier.py` - `copy_time_schedule_to_lsz()` method
+- **Behavior:** Copies pieces_count directly from parsed Word document if present
+- **Mapping:** Uses column mapping from `LSZ_TABLE_MAPPING` in `config/table_mappings.py`
+- **Critical:** pieces_count is optional - if None or missing, cell remains empty (allows manual entry)
+- **Excel columns:** Both time_min and pieces_count are copied to their respective columns in "Časový snímek" sheet
 
 ### Project Structure
 Generated projects follow this pattern:
@@ -370,14 +404,19 @@ The application generates Word protocols with dynamic text based on measurement 
    - Adjusts category limits for non-standard shift lengths
    - Categorizes each body position (trup, hlava_krk, phk, lhk, dk, ostatni) into categories 1-3
    - Separate limits for "PP" (working positions) and "N" (unfavorable positions)
+   - **Single-worker mode:** Uses `vyskyt_min_a` if worker_b has empty full_name (auto-detected)
+   - **Two-worker mode:** Uses `prumer_min` (default when worker_b exists)
    - Returns complete text with category evaluation
    - See `PP_KATEGORIE_LIMITY_DOKUMENTACE.md` for coefficient calculation and category boundaries
+   - See `PP_SINGLE_WORKER_MODE.md` for single-worker detection and usage
 2. **pp_problematicke_polohy_seznam** - List of problematic positions only
    - Returns comma-separated list of positions that exceeded the highest measured category
    - Category 2: Lists ALL positions that exceeded category 1
    - Category 3: Lists ONLY positions that exceeded category 2 (worst cases)
    - Category 1: Returns empty string (no problems)
    - Format: "dynamické předklon trupu, statické otočení hlavy" (lowercase with type)
+   - **Single-worker mode:** Uses `vyskyt_min_a` (auto-detected)
+   - **Two-worker mode:** Uses `prumer_min` (default)
    - Use for custom text formulations or conditional display in templates
    - See `PP_SEZNAM_PROBLEMATICKYCH_POLOH_DOCS.md` for usage examples
 3. **pp_kategorie_cislo** - Category number only
@@ -387,6 +426,8 @@ The application generates Word protocols with dynamic text based on measurement 
    - Exceeded category 2 → returns "3"
    - No exceedances → returns "1"
    - Returns STRING not integer - use string comparison in templates: `{% if texts.pp_kategorie_cislo == '1' %}`
+   - **Single-worker mode:** Uses `vyskyt_min_a` (auto-detected)
+   - **Two-worker mode:** Uses `prumer_min` (default)
    - Use for conditional logic and dynamic text generation in templates
    - See `PP_KATEGORIE_CISLO_DOCS.md` for usage examples
 
@@ -530,6 +571,9 @@ See `JAK_VYTVORIT_EXE.md` for detailed build instructions and troubleshooting.
 - **PyInstaller build system** for standalone EXE distribution
 - **11th conditional text** (jedenacta_text_podminka) - hierarchical evaluation of all 4 muscle groups
 - **PP work position categorization** (prvni_pp_podminka_kategorie) - NV 361/2007 Table 8 implementation with coefficient-based limit adjustment
+- **Czech declension system** - Automatic grammatical case conversion for PP protocol position names (nominative → genitive)
+- **Flexible Word table parsing** - Fuzzy column name matching, handles missing columns, backward compatible
+- **LSZ pieces count support** - Proper handling of "Počet kusů" column from Word documents to LSZ Excel
 
 **Not Yet Implemented (see NEXT_STEPS_ANALYSIS.md):**
 - All 15 Word template variants (currently only test templates exist)
@@ -562,6 +606,7 @@ See `JAK_VYTVORIT_EXE.md` for detailed build instructions and troubleshooting.
 - `PP_KATEGORIE_LIMITY_DOKUMENTACE.md` - Documentation for PP work position categorization (NV 361/2007)
 - `PP_SEZNAM_PROBLEMATICKYCH_POLOH_DOCS.md` - Documentation for pp_problematicke_polohy_seznam placeholder
 - `PP_KATEGORIE_CISLO_DOCS.md` - Documentation for pp_kategorie_cislo placeholder (category number)
+- `PP_SINGLE_WORKER_MODE.md` - Documentation for single-worker protocol detection and usage
 - `config/README.md` - Instructions for adding new Excel mappings
 
 **Example data:**
@@ -651,6 +696,15 @@ python main.py
 - `test_ares_api.py` - Tests ARES API integration for company data lookup
 - `test_gender_implementation.py` - Tests gender-based Czech text generation
 - `test_czech_filter.py` - Tests Czech language filters for Jinja2 templates
+- `test_czech_declension.py` - Tests Czech declension system for PP position names
+
+**Parsing and data handling tests:**
+- `test_flexible_docx_parsing.py` - Tests flexible Word table parsing with fuzzy matching
+- `test_backward_compatibility.py` - Tests backward compatibility of Word parsing
+- `test_lsz_pieces_fix.py` - Tests LSZ pieces count copying from Word to Excel
+- `test_pp_single_worker_detection.py` - Tests single-worker protocol detection
+- `test_pp_single_vs_dual_worker_logic.py` - Tests single-worker vs two-worker value selection
+- `test_pp_single_worker_integration.py` - Integration test for single-worker PP protocol generation
 
 **Debug scripts:**
 - `debug_excel.py` - Excel reading and debugging
