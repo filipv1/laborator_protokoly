@@ -1,12 +1,14 @@
 """
 Project Manager - správa projektů a generování souborů
 """
+import sys
 import json
 import shutil
 from pathlib import Path
 from typing import Dict, Any
 from .excel_filler import ExcelFiller
 from .table_copier import TableCopier
+from .system_check import verify_system_compatibility
 from config import LSZ_MAPPING, PP_CAS_MAPPING, PP_KUSY_MAPPING, CFZ_MAPPING
 
 
@@ -18,8 +20,16 @@ class ProjectManager:
         Args:
             base_projects_dir: Základní složka pro projekty
         """
-        self.base_dir = Path(__file__).parent.parent / base_projects_dir
-        self.templates_dir = Path(__file__).parent.parent / "templates" / "excel"
+        # Detect if running as PyInstaller EXE
+        if getattr(sys, 'frozen', False):
+            # Running as EXE - use paths relative to executable
+            exe_dir = Path(sys.executable).parent
+            self.base_dir = exe_dir / base_projects_dir
+            self.templates_dir = exe_dir / "_internal" / "templates" / "excel"
+        else:
+            # Running as Python script - use paths relative to this file
+            self.base_dir = Path(__file__).parent.parent / base_projects_dir
+            self.templates_dir = Path(__file__).parent.parent / "templates" / "excel"
 
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
@@ -33,6 +43,12 @@ class ProjectManager:
         Returns:
             Path k vytvořené složce projektu
         """
+        # Verify system health before project creation
+        # Ensures all dependencies are available for Excel/Word processing
+        if not verify_system_compatibility():
+            print("ERROR: System compatibility check failed during project creation")
+            sys.exit(1)
+
         project_folder = self._create_project_folder(project_data)
         copied_files = self._copy_excel_templates(project_folder, project_data)
         self._fill_excel_data(copied_files, project_data)

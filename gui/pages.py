@@ -591,10 +591,6 @@ class Page2_Firma(QWizardPage):
         self.datum_mereni.setDate(QDate.currentDate())
         self.datum_mereni.setCalendarPopup(True)
 
-        self.doba_mereni = QTimeEdit()
-        self.doba_mereni.setTime(QTime(8, 0))  # Default 08:00:00
-        self.doba_mereni.setDisplayFormat("HH:mm:ss")
-
         self.evidencni_cislo = QLineEdit()
 
         self.pocet_dni_mereni = QComboBox()
@@ -617,7 +613,6 @@ class Page2_Firma(QWizardPage):
 
         layout.addRow("Směnnost:", self.smennost)
         layout.addRow("Datum měření:", self.datum_mereni)
-        layout.addRow("Délka měření:", self.doba_mereni)
         layout.addRow("Evidenční číslo:", self.evidencni_cislo)
         layout.addRow("Počet dní měření:", self.pocet_dni_mereni)
 
@@ -738,6 +733,11 @@ class Page4_PracovnikA(QWizardPage):
         self.emg_holter_a = QComboBox()
         self.emg_holter_a.addItems(["A", "B", "C", "D", "E", "F"])
 
+        # Délka měření pro pracovníka A
+        self.measurement_duration_a = QTimeEdit()
+        self.measurement_duration_a.setTime(QTime(8, 0))  # Default 08:00:00
+        self.measurement_duration_a.setDisplayFormat("HH:mm:ss")
+
         self.doba_vykonu_a = QLineEdit()
         self.prestavky_a = QLineEdit()
 
@@ -759,6 +759,7 @@ class Page4_PracovnikA(QWizardPage):
         layout.addRow("Síla stisku ruky PHK (N):", self.sila_phk_a)
         layout.addRow("Síla stisku ruky LHK (N):", self.sila_lhk_a)
         layout.addRow("EMG Holter:", self.emg_holter_a)
+        layout.addRow("Délka měření:", self.measurement_duration_a)
         layout.addRow("Směna (min):", self.doba_vykonu_a)
         layout.addRow("Přestávka na jídlo a oddech (min):", self.prestavky_a)
         layout.addRow("Doba výkonu práce (min):", self.doba_vykonu_min_a)
@@ -809,6 +810,11 @@ class Page5_PracovnikB(QWizardPage):
         self.emg_holter_b = QComboBox()
         self.emg_holter_b.addItems(["A", "B", "C", "D", "E", "F"])
 
+        # Délka měření pro pracovníka B
+        self.measurement_duration_b = QTimeEdit()
+        self.measurement_duration_b.setTime(QTime(8, 0))  # Default 08:00:00
+        self.measurement_duration_b.setDisplayFormat("HH:mm:ss")
+
         layout.addRow("Jméno a příjmení:", self.jmeno_b)
         layout.addRow("Věk (let):", self.vek_b)
         layout.addRow("Délka expozice (let):", self.delka_expozice_b)
@@ -818,6 +824,7 @@ class Page5_PracovnikB(QWizardPage):
         layout.addRow("Síla stisku ruky PHK (N):", self.sila_phk_b)
         layout.addRow("Síla stisku ruky LHK (N):", self.sila_lhk_b)
         layout.addRow("EMG Holter:", self.emg_holter_b)
+        layout.addRow("Délka měření:", self.measurement_duration_b)
 
 
 class Page6_Zaverecne(QWizardPage):

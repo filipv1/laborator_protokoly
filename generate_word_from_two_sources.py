@@ -89,7 +89,14 @@ def format_czech_number(value):
             decimal_part = None
         else:
             # DESETINNÉ ČÍSLO: zaokrouhli na 1 des. místo
-            num_rounded = round(num, 1)
+            # OPRAVENO: Použít MATEMATICKÉ zaokrouhlování (ne Python banker's rounding)
+            # Banker's rounding: round(11.45, 1) → 11.4 (zaokrouhlí na sudé)
+            # Matematické: 11.45 → 11.5 (vždy nahoru při 0.5)
+            import math
+            num_rounded = math.floor(abs(num) * 10 + 0.5) / 10
+            if num < 0:
+                num_rounded = -num_rounded
+
             # Rozděl na celou a desetinnou část
             integer_part_num = int(abs(num_rounded))
             decimal_part_num = abs(num_rounded) - integer_part_num
@@ -121,6 +128,177 @@ def format_czech_number(value):
             return f"{formatted_int},{decimal_part}"
         else:
             return formatted_int
+
+    except (ValueError, TypeError):
+        # Pokud se nepodaří konvertovat, vrať původní hodnotu
+        return str(value) if value else ""
+
+
+def format_czech_number_czek(value):
+    """
+    Formátování čísel v českém formátu s POVINNOU desetinnou čárkou pro celá čísla.
+
+    Totožné s format_czech_number() kromě jedné věci:
+    - Celá čísla: VŽDY s ",0" na konci (např. "450,0", "2 222,0")
+    - Desetinná čísla: stejně jako czech - 1 des. místo (např. "8,6", "12 345,7")
+    - VÝJIMKA: Nula zůstává "0" (bez ",0") - kvůli logice odstranění prázdných řádků
+
+    Args:
+        value: Číslo k formátování (float, int, string nebo None)
+
+    Returns:
+        str: Formátované číslo v českém formátu s desetinnou čárkou
+
+    Příklady:
+        >>> format_czech_number_czek(4)
+        "4,0"
+        >>> format_czech_number_czek(450)
+        "450,0"
+        >>> format_czech_number_czek(2222)
+        "2 222,0"
+        >>> format_czech_number_czek(8.55)
+        "8,6"
+        >>> format_czech_number_czek(12345.67)
+        "12 345,7"
+        >>> format_czech_number_czek(0)
+        "0"
+        >>> format_czech_number_czek(-5)
+        "-5,0"
+    """
+    if value is None:
+        return ""
+
+    try:
+        # Konvertuj na float
+        num = float(value)
+
+        # Detekuj, jestli je to prakticky celé číslo
+        # (tolerance pro float nepřesnosti: 0.0001)
+        is_integer = abs(num - round(num)) < 0.0001
+
+        if is_integer:
+            # CELÉ ČÍSLO: žádná desetinná místa (ale přidáme ,0 na konci)
+            num_int = int(round(num))
+            num_str = str(abs(num_int))  # abs pro handling záporných čísel
+            decimal_part = None
+        else:
+            # DESETINNÉ ČÍSLO: zaokrouhli na 1 des. místo
+            # OPRAVENO: Použít MATEMATICKÉ zaokrouhlování (ne Python banker's rounding)
+            import math
+            num_rounded = math.floor(abs(num) * 10 + 0.5) / 10
+            if num < 0:
+                num_rounded = -num_rounded
+
+            # Rozděl na celou a desetinnou část
+            integer_part_num = int(abs(num_rounded))
+            decimal_part_num = abs(num_rounded) - integer_part_num
+
+            # Převeď desetinnou část na string (1 des. místo)
+            decimal_str = f"{decimal_part_num:.1f}".split('.')[1]
+
+            num_str = str(integer_part_num)
+            decimal_part = decimal_str
+
+        # FORMÁTOVÁNÍ CELÉ ČÁSTI s mezerami (každé 3 cifry zprava)
+        if len(num_str) <= 3:
+            # Číslo < 1000: bez mezer
+            formatted_int = num_str
+        else:
+            # Číslo >= 1000: přidej mezery
+            formatted_int = ""
+            for i, digit in enumerate(reversed(num_str)):
+                if i > 0 and i % 3 == 0:
+                    formatted_int = " " + formatted_int
+                formatted_int = digit + formatted_int
+
+        # Handling záporných čísel
+        if num < 0:
+            formatted_int = "-" + formatted_int
+
+        # VÝSLEDEK
+        if decimal_part:
+            return f"{formatted_int},{decimal_part}"
+        else:
+            # *** KLÍČOVÝ ROZDÍL: Pro celá čísla přidej ",0" ***
+            # SPECIÁLNÍ PŘÍPAD: Nula zůstane "0" (bez ",0") - kvůli logice odstranění prázdných řádků
+            if formatted_int == "0" or formatted_int == "-0":
+                return "0"
+            else:
+                return formatted_int + ",0"
+
+    except (ValueError, TypeError):
+        # Pokud se nepodaří konvertovat, vrať původní hodnotu
+        return str(value) if value else ""
+
+
+def format_czech_number_nondecimal(value):
+    """
+    Formátování čísel v českém formátu s VŽDY zaokrouhlením na celé číslo.
+
+    ŽÁDNÁ desetinná místa - vše se zaokrouhlí na celé číslo.
+    Použití: Pro hodnoty kde nechceš žádné desetinné místo.
+
+    Args:
+        value: Číslo k formátování (float, int, string nebo None)
+
+    Returns:
+        str: Formátované celé číslo v českém formátu (bez desetinných míst)
+
+    Pravidla:
+        - Vše se zaokrouhlí na celé číslo (matematicky pomocí _math_round)
+        - Formátování tisíců s mezerami
+        - ŽÁDNÁ desetinná čárka (ani pro desetinná čísla)
+
+    Příklady:
+        >>> format_czech_number_nondecimal(15652.5)
+        "15 653"
+        >>> format_czech_number_nondecimal(8.55)
+        "9"
+        >>> format_czech_number_nondecimal(8.44)
+        "8"
+        >>> format_czech_number_nondecimal(2222)
+        "2 222"
+        >>> format_czech_number_nondecimal(450)
+        "450"
+        >>> format_czech_number_nondecimal(0)
+        "0"
+        >>> format_czech_number_nondecimal(123456789.7)
+        "123 456 790"
+        >>> format_czech_number_nondecimal(-5.6)
+        "-6"
+    """
+    if value is None:
+        return ""
+
+    try:
+        # Konvertuj na float
+        num = float(value)
+
+        # VŽDY zaokrouhli na celé číslo (matematické zaokrouhlování)
+        # Importujeme _math_round z tohoto souboru (už existuje výše)
+        import math
+        num_int = int(math.floor(num + 0.5))  # Matematické zaokrouhlování
+
+        # Konvertuj na string (absolutní hodnota pro formátování)
+        num_str = str(abs(num_int))
+
+        # FORMÁTOVÁNÍ s mezerami (každé 3 cifry zprava)
+        if len(num_str) <= 3:
+            # Číslo < 1000: bez mezer
+            formatted_int = num_str
+        else:
+            # Číslo >= 1000: přidej mezery
+            formatted_int = ""
+            for i, digit in enumerate(reversed(num_str)):
+                if i > 0 and i % 3 == 0:
+                    formatted_int = " " + formatted_int
+                formatted_int = digit + formatted_int
+
+        # Handling záporných čísel
+        if num_int < 0:
+            formatted_int = "-" + formatted_int
+
+        return formatted_int
 
     except (ValueError, TypeError):
         # Pokud se nepodaří konvertovat, vrať původní hodnotu
@@ -406,7 +584,9 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
     # POŽADAVEK 3,4,5: Vytvoř vlastní Jinja2 environment s custom filtry
     jinja_env = Environment()
     jinja_env.filters['czech'] = format_czech_number
-    print("✓ Custom filtr zaregistrován: |czech (univerzální formátování)")
+    jinja_env.filters['czek'] = format_czech_number_czek
+    jinja_env.filters['nondecimal'] = format_czech_number_nondecimal
+    print("✓ Custom filtry zaregistrovány: |czech, |czek (s desetinnou čárkou), |nondecimal (pouze celá čísla)")
 
     # Přidat subdoc do contextu
     if copied_docx_path and Path(copied_docx_path).exists():
@@ -425,6 +605,12 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
     # POŽADAVEK 7: Přidej dnešní datum do contextu
     context["today_date"] = datetime.now().strftime("%d.%m.%Y")
     print(f"✓ Dnešní datum přidáno: {context['today_date']}")
+
+    # Přidej dobu měření pro pracovníka A a B jako zkrácené placeholdery
+    context["doba_mereni_a"] = input_data.get("section4_worker_a", {}).get("work_duration", "")
+    context["doba_mereni_b"] = input_data.get("section5_worker_b", {}).get("work_duration", "")
+    print(f"✓ Doba měření pracovníka A: {context['doba_mereni_a']}")
+    print(f"✓ Doba měření pracovníka B: {context['doba_mereni_b']}")
 
     # DEBUG: Vypis klice v section_generated_texts
     if "section_generated_texts" in context:

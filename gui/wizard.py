@@ -97,7 +97,6 @@ class MeasurementGUI(QWizard):
                 "ico": self.page2.ico.text(),
                 "shift_pattern": self.page2.smennost.currentText(),
                 "measurement_date": self.page2.datum_mereni.date().toString("dd.MM.yyyy"),
-                "measurement_duration": self.page2.doba_mereni.time().toString("HH:mm:ss"),
                 "evidence_number": self.page2.evidencni_cislo.text(),
                 "measurement_days": int(self.page2.pocet_dni_mereni.currentText())
             },
@@ -115,6 +114,7 @@ class MeasurementGUI(QWizard):
                 "grip_strength_phk_n": self.page4.sila_phk_a.value(),
                 "grip_strength_lhk_n": self.page4.sila_lhk_a.value(),
                 "emg_holter": self.page4.emg_holter_a.currentText(),
+                "measurement_duration": self.page4.measurement_duration_a.time().toString("HH:mm:ss"),
                 "work_duration": self.page4.doba_vykonu_a.text(),
                 "breaks": self.page4.prestavky_a.text(),
                 "work_duration_min": self.page4.doba_vykonu_min_a.value(),
@@ -130,7 +130,14 @@ class MeasurementGUI(QWizard):
                 "laterality": self.page5.lateralita_b.currentText(),
                 "grip_strength_phk_n": self.page5.sila_phk_b.value(),
                 "grip_strength_lhk_n": self.page5.sila_lhk_b.value(),
-                "emg_holter": self.page5.emg_holter_b.currentText()
+                # If worker_b has no name (single worker mode), set emg_holter to empty string
+                "emg_holter": self.page5.emg_holter_b.currentText() if self.page5.jmeno_b.text().strip() else "",
+                "measurement_duration": self.page5.measurement_duration_b.time().toString("HH:mm:ss"),
+                # 4 hodnoty se kopírují z worker A
+                "work_duration": self.page4.doba_vykonu_a.text(),
+                "breaks": self.page4.prestavky_a.text(),
+                "work_duration_min": self.page4.doba_vykonu_min_a.value(),
+                "safety_break_min": self.page4.bezpecnostni_prestavka_min_a.value()
             },
             "section6_final": {
                 "measured_by": self.page6.mereni_provedl.text()
@@ -138,10 +145,34 @@ class MeasurementGUI(QWizard):
         }
         return data
 
+    def _calculate_averages(self, data):
+        """Vypočítá průměry hodnot mezi worker_a a worker_b"""
+        worker_a = data.get("section4_worker_a", {})
+        worker_b = data.get("section5_worker_b", {})
+
+        # Kontrola zda worker_b má vyplněné jméno (single vs dual worker mode)
+        has_worker_b = bool(worker_b.get("full_name", "").strip())
+
+        fields = ["age_years", "exposure_length_years", "height_cm", "weight_kg"]
+        prumery = {}
+
+        for field in fields:
+            val_a = worker_a.get(field, 0) or 0
+            if has_worker_b:
+                val_b = worker_b.get(field, 0) or 0
+                prumery[field] = round((val_a + val_b) / 2, 1)
+            else:
+                prumery[field] = val_a
+
+        return prumery
+
     def _on_finished(self, result):
         """Handler při dokončení wizardu"""
         if result == QWizard.DialogCode.Accepted:
             data = self._collect_data()
+
+            # Přidání průměrů do dat
+            data["prumery"] = self._calculate_averages(data)
 
             project_manager = ProjectManager()
             project_folder = project_manager.create_project(data)

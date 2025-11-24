@@ -2138,7 +2138,7 @@ def highlight_lsz_category(
         None (upravuje dokument in-place)
     """
     from docx import Document
-    from docx.shared import RGBColor
+    from docx.shared import RGBColor, Pt
 
     # Otevři dokument
     doc = Document(docx_path)
@@ -2183,15 +2183,15 @@ def highlight_lsz_category(
     # Definuj barvy podle kategorie
     if category == 1:
         text_color = RGBColor(0, 0, 0)  # Černá
-        bg_color = "90EE90"  # Světle zelená
+        bg_color = "33ED33"  # Zelená
         desc = "černá/zelená (OK)"
     elif category == 2:
         text_color = RGBColor(0, 0, 0)  # Černá
-        bg_color = "FFA500"  # Oranžová
+        bg_color = "FFC000"  # Oranžová
         desc = "černá/oranžová (varování)"
     elif category == 3:
         text_color = RGBColor(255, 255, 255)  # Bílá
-        bg_color = "FF0000"  # Červená
+        bg_color = "C00000"  # Tmavě červená
         desc = "bílá/červená (kritické)"
     else:
         print(f"  ⚠ Neplatná hodnota kategorie: {category} (očekáváno 1, 2, nebo 3)")
@@ -2207,6 +2207,8 @@ def highlight_lsz_category(
     new_para.alignment = 1  # Center
     run = new_para.add_run(cell_text)
     run.font.color.rgb = text_color
+    run.font.size = Pt(36)
+    run.font.name = "Cambria"
     run.bold = True  # Tučně pro lepší viditelnost
 
     # Nastav background buňky
@@ -2249,7 +2251,7 @@ def highlight_pp_category_number(
         None (upravuje dokument in-place)
     """
     from docx import Document
-    from docx.shared import RGBColor
+    from docx.shared import RGBColor, Pt
 
     # Otevři dokument
     doc = Document(docx_path)
@@ -2301,15 +2303,15 @@ def highlight_pp_category_number(
     # Definuj barvy podle kategorie (stejné jako u LSZ)
     if category == 1:
         text_color = RGBColor(0, 0, 0)  # Černá
-        bg_color = "90EE90"  # Světle zelená
+        bg_color = "33ED33"  # Zelená
         desc = "černá/zelená (OK)"
     elif category == 2:
         text_color = RGBColor(0, 0, 0)  # Černá
-        bg_color = "FFA500"  # Oranžová
+        bg_color = "FFC000"  # Oranžová
         desc = "černá/oranžová (varování)"
     elif category == 3:
         text_color = RGBColor(255, 255, 255)  # Bílá
-        bg_color = "FF0000"  # Červená
+        bg_color = "C00000"  # Tmavě červená
         desc = "bílá/červená (kritické)"
     else:
         print(f"  ⚠ Neplatná hodnota PP kategorie: {category} (očekáváno 1, 2, nebo 3)")
@@ -2325,6 +2327,8 @@ def highlight_pp_category_number(
     new_para.alignment = 1  # Center
     run = new_para.add_run(cell_text)
     run.font.color.rgb = text_color
+    run.font.size = Pt(36)
+    run.font.name = "Cambria"
     run.bold = True  # Tučně pro lepší viditelnost
 
     # Nastav background buňky

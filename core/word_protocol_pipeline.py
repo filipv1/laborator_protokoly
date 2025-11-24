@@ -2,12 +2,14 @@
 Word Protocol Pipeline - kompletní pipeline pro generování Word protokolů
 Podporuje LSZ a PP protokoly
 """
+import sys
 import json
 from pathlib import Path
 from typing import Optional, Literal
 from read_lsz_results import read_lsz_results
 from read_pp_results import read_pp_results
 from generate_word_from_two_sources import generate_word_protocol_v2, generate_word_protocol_v1
+from core.system_check import verify_system_compatibility
 
 # Type hint pro protocol types
 ProtocolType = Literal["LSZ", "PP_CAS", "PP_KUSY"]
@@ -83,6 +85,11 @@ class WordProtocolPipeline:
         Returns:
             (success: bool, message: str)
         """
+        # Verify system compatibility before Word protocol generation
+        # Critical for docxtpl rendering and python-docx operations
+        if not verify_system_compatibility():
+            return False, "System compatibility check failed - cannot generate Word protocol"
+
         try:
             # KROK 0: Detekuj typ protokolu z Excel názvu
             excel_path = Path(excel_path)

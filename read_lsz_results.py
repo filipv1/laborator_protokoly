@@ -7,7 +7,7 @@ import json
 import openpyxl
 from datetime import time, datetime
 from pathlib import Path
-import xlwings as xw
+# import xlwings as xw  # COMMENTED OUT - not used (chart export disabled)
 
 
 def convert_to_json_safe(value):

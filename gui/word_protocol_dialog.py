@@ -56,12 +56,11 @@ class WordProtocolGeneratorDialog(QDialog):
         import sys
         import os
 
-        # Pro PyInstaller - hledej vedle EXE souboru, ne v _MEIPASS
-        # Složka "sample_protocols" je zabalena v _internal/
+        # Pro PyInstaller - resources jsou v _internal\
         if getattr(sys, 'frozen', False):
-            # Běží jako EXE
+            # Running as EXE - resources are in _internal\
             exe_dir = Path(sys.executable).parent
-            return exe_dir / relative_path
+            return exe_dir / "_internal" / relative_path
         else:
             # Běží jako Python script
             return Path(relative_path)

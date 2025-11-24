@@ -6,6 +6,7 @@ import atexit
 from PyQt6.QtWidgets import QApplication
 from gui import MainMenuWindow
 from core import FileManager
+from core.system_check import verify_system_compatibility
 
 
 def cleanup_on_exit():
@@ -17,6 +18,11 @@ def cleanup_on_exit():
 
 def main():
     """Spustí hlavní aplikaci"""
+    # Verify system compatibility before starting GUI
+    # This checks Python version, required packages, and optional services
+    if not verify_system_compatibility():
+        sys.exit(1)
+
     # Registruj cleanup funkci pro volání při ukončení
     atexit.register(cleanup_on_exit)
 

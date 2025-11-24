@@ -145,8 +145,9 @@ class WordProtocolGeneratorDialogV2(QDialog):
         """Získá správnou cestu k resource souboru pro PyInstaller"""
         import sys
         if getattr(sys, 'frozen', False):
+            # Running as EXE - resources are in _internal\
             exe_dir = Path(sys.executable).parent
-            return exe_dir / relative_path
+            return exe_dir / "_internal" / relative_path
         else:
             return Path(relative_path)
 
@@ -393,7 +394,7 @@ class WordProtocolGeneratorDialogV2(QDialog):
                 ("LSZ - 1 muž", "Jeden zaměstnanec", "LSZ_jeden_MUŽ.DOCX"),
             ],
             ("LSZ", 1, "ženy"): [
-                ("LSZ - 1 žena", "Jeden zaměstnanec", "LSZ_jedna_ŽENA.DOCX"),
+                ("LSZ - 1 žena", "Jeden zaměstnanec", "LSZ_jedna_žena.DOCX"),
             ],
 
             # PP templates (ČAS/KUSY používají stejnou šablonu)
