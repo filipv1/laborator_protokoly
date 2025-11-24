@@ -60,7 +60,11 @@ class ProjectManager:
 
     def _create_project_folder(self, project_data: Dict[str, Any]) -> Path:
         """Vytvoří složku projektu podle evidenčního čísla a firmy"""
-        evidence_number = project_data["section2_firma"]["evidence_number"]
+        # Použij první neprázdné evidenční číslo (priorita LSZ > PP)
+        evidence_number_lsz = project_data["section2_firma"]["evidence_number_lsz"]
+        evidence_number_pp = project_data["section2_firma"]["evidence_number_pp"]
+        evidence_number = evidence_number_lsz if evidence_number_lsz else evidence_number_pp
+
         company = project_data["section2_firma"]["company"]
 
         folder_name = self._sanitize_folder_name(f"{evidence_number}_{company}")
@@ -78,30 +82,33 @@ class ProjectManager:
             Dictionary: {"lsz": Path, "cfz": Path, ...} - zkopírované soubory
         """
         file_selection = project_data["section0_file_selection"]
-        evidence_number = project_data["section2_firma"]["evidence_number"]
+        evidence_number_lsz = project_data["section2_firma"]["evidence_number_lsz"]
+        evidence_number_pp = project_data["section2_firma"]["evidence_number_pp"]
         company = project_data["section2_firma"]["company"]
 
-        base_filename = self._sanitize_folder_name(f"{evidence_number}_{company}")
+        # Každý typ souboru použije své evidenční číslo
+        lsz_filename = self._sanitize_folder_name(f"{evidence_number_lsz}_{company}")
+        pp_filename = self._sanitize_folder_name(f"{evidence_number_pp}_{company}")
 
         template_mapping = {
             "generate_lsz": {
                 "template": "LSZ_template.xlsm",
-                "output": f"LSZ_{base_filename}.xlsm",
+                "output": f"LSZ_{lsz_filename}.xlsm",
                 "type": "lsz"
             },
             "generate_pp_time": {
                 "template": "PP_template_CAS.xlsx",
-                "output": f"PP_{base_filename}_CAS.xlsx",
+                "output": f"PP_{pp_filename}_CAS.xlsx",
                 "type": "pp_time"
             },
             "generate_pp_pieces": {
                 "template": "PP_template_KUSY.xlsx",
-                "output": f"PP_{base_filename}_KUSY.xlsx",
+                "output": f"PP_{pp_filename}_KUSY.xlsx",
                 "type": "pp_pieces"
             },
             "generate_cfz": {
                 "template": "CFZ_template.xlsx",
-                "output": f"CFZ_{base_filename}.xlsx",
+                "output": f"CFZ_{pp_filename}.xlsx",
                 "type": "cfz"
             }
         }
@@ -192,8 +199,11 @@ class ProjectManager:
             print("Varování: Nahraný Word soubor nebyl nalezen")
             return
 
-        # Vytvoř název podle evidence čísla a firmy
-        evidence_number = project_data["section2_firma"]["evidence_number"]
+        # Vytvoř název podle evidence čísla a firmy (použij první neprázdné)
+        evidence_number_lsz = project_data["section2_firma"]["evidence_number_lsz"]
+        evidence_number_pp = project_data["section2_firma"]["evidence_number_pp"]
+        evidence_number = evidence_number_lsz if evidence_number_lsz else evidence_number_pp
+
         company = project_data["section2_firma"]["company"]
         # Sanitizuj pouze basename (bez přípony), pak přidej .docx
         basename = self._sanitize_folder_name(f"popis_prace_{evidence_number}_{company}")

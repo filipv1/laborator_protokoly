@@ -46,7 +46,8 @@
         "ico": "123456789",
         "shift_pattern": "ranní",
         "measurement_date": "10.02.2025",
-        "evidence_number": "66"
+        "evidence_number_lsz": "66",
+        "evidence_number_pp": "67"
     },
     "section3_additional_data": {
         "set_standard": "105",

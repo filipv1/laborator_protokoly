@@ -591,7 +591,9 @@ class Page2_Firma(QWizardPage):
         self.datum_mereni.setDate(QDate.currentDate())
         self.datum_mereni.setCalendarPopup(True)
 
-        self.evidencni_cislo = QLineEdit()
+        # Dvě evidenční čísla: LSZ a PP
+        self.evidencni_cislo_lsz = QLineEdit()
+        self.evidencni_cislo_pp = QLineEdit()
 
         self.pocet_dni_mereni = QComboBox()
         self.pocet_dni_mereni.addItems(["1", "2"])
@@ -613,7 +615,14 @@ class Page2_Firma(QWizardPage):
 
         layout.addRow("Směnnost:", self.smennost)
         layout.addRow("Datum měření:", self.datum_mereni)
-        layout.addRow("Evidenční číslo:", self.evidencni_cislo)
+
+        # Evidenční čísla - ukládáme si row indexy pro pozdější skrytí/zobrazení
+        self.lsz_row = layout.rowCount()
+        layout.addRow("Evidenční číslo LSZ:", self.evidencni_cislo_lsz)
+
+        self.pp_row = layout.rowCount()
+        layout.addRow("Evidenční číslo PP:", self.evidencni_cislo_pp)
+
         layout.addRow("Počet dní měření:", self.pocet_dni_mereni)
 
     def _on_ares_lookup(self):
@@ -686,6 +695,40 @@ class Page2_Firma(QWizardPage):
             # Obnov tlačítko
             self.ares_button.setEnabled(True)
             self.ares_button.setText("🔍 Dohledat")
+
+    def initializePage(self):
+        """Dynamicky ukáže/skryje evidenční čísla podle výběru z Page0"""
+        # Získej referenci na Page0 přes wizard
+        wizard = self.wizard()
+        if wizard is None:
+            return
+
+        page0 = wizard.page0
+
+        # Zjisti, co bylo vybráno
+        generate_lsz = page0.checkbox_lsz.isChecked()
+        generate_pp = page0.checkbox_pp_cas.isChecked() or page0.checkbox_pp_kusy.isChecked()
+
+        # Získej layout
+        layout = self.layout()
+
+        # Skryj/zobraz LSZ řádek
+        label_item_lsz = layout.itemAt(self.lsz_row, QFormLayout.ItemRole.LabelRole)
+        field_item_lsz = layout.itemAt(self.lsz_row, QFormLayout.ItemRole.FieldRole)
+
+        if label_item_lsz and label_item_lsz.widget():
+            label_item_lsz.widget().setVisible(generate_lsz)
+        if field_item_lsz and field_item_lsz.widget():
+            field_item_lsz.widget().setVisible(generate_lsz)
+
+        # Skryj/zobraz PP řádek
+        label_item_pp = layout.itemAt(self.pp_row, QFormLayout.ItemRole.LabelRole)
+        field_item_pp = layout.itemAt(self.pp_row, QFormLayout.ItemRole.FieldRole)
+
+        if label_item_pp and label_item_pp.widget():
+            label_item_pp.widget().setVisible(generate_pp)
+        if field_item_pp and field_item_pp.widget():
+            field_item_pp.widget().setVisible(generate_pp)
 
 
 class Page3_DalsiUdaje(QWizardPage):

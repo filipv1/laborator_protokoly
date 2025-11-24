@@ -67,8 +67,10 @@ def test_word_subdoc_workflow():
     # 4. Ověření výsledků
     print("\n[4/5] Ověřování výsledků...")
 
-    # Zkontroluj, že Word byl zkopírován do projektu
-    evidence = project_data["section2_firma"]["evidence_number"]
+    # Zkontroluj, že Word byl zkopírován do projektu (použij první neprázdné evidenční číslo)
+    evidence_lsz = project_data["section2_firma"]["evidence_number_lsz"]
+    evidence_pp = project_data["section2_firma"]["evidence_number_pp"]
+    evidence = evidence_lsz if evidence_lsz else evidence_pp
     company = project_data["section2_firma"]["company"]
 
     # Sanitize názvu (stejný algoritmus jako ProjectManager)

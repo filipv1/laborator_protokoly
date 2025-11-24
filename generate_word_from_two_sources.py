@@ -13,7 +13,7 @@ from docx import Document
 from pathlib import Path
 from PIL import Image
 from jinja2 import Environment
-from core.text_generator import generate_conditional_texts, get_selected_holter_numbers, highlight_selected_holters, highlight_force_distribution_values, highlight_pp_categories, highlight_lsz_category, highlight_pp_category_number
+from core.text_generator import generate_conditional_texts, get_selected_holter_numbers, highlight_selected_holters, highlight_force_distribution_values, highlight_pp_categories, highlight_lsz_category, highlight_pp_category_number, highlight_nad_limitem_values, highlight_pp_typ_svalove_prace
 
 # Fix Windows console encoding
 sys.stdout.reconfigure(encoding='utf-8')
@@ -664,6 +664,11 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
         print(f"  → Zvýrazňuji LSZ kategorii barevným textem a backgroundem...")
         highlight_lsz_category(output_path, input_data, results_data)
 
+        # POST-PROCESSING: Červeně zvýrazni texty "Nad limitem" v tabulce porovnání
+        print(f"  → Zvýrazňuji 'Nad limitem' hodnoty červeně a tučně...")
+        highlight_nad_limitem_values(output_path)
+        print(f"  ✓ 'Nad limitem' hodnoty zvýrazněny")
+
     # POST-PROCESSING: Zvýrazni PP kategorie barevným backgroundem
     if protocol_type in ["PP_CAS", "PP_KUSY"]:
         print(f"  → Zvýrazňuji PP kategorie barevným backgroundem...")
@@ -678,6 +683,10 @@ def generate_word_protocol_v2(measurement_json, results_json, template_path, out
             print(f"  ⚠ CHYBA při zvýrazňování PP kategorie: {e}")
             import traceback
             traceback.print_exc()
+
+        # POST-PROCESSING: Obarvi background pro typ svalové práce (Statická/Dynamická)
+        print(f"  → Obarvuji background pro typ svalové práce...")
+        highlight_pp_typ_svalove_prace(output_path)
 
     # POST-PROCESSING: Odstraň prázdné řádky z tabulek
     print(f"  → Odstraňuji prázdné řádky z tabulek...")
@@ -901,8 +910,10 @@ def remove_empty_pp_rows(docx_path):
         "Statická", "Dynamická"  # Typy svalové práce - přítomné ve všech PP tabulkách
     ]
 
-    section_keywords = ["TRUP", "HLAVA_KRK", "HLAVA A KRK", "PHK", "LHK", "DOLNÍ KONČETINY", "DK", "DKK",
-                       "OSTATNÍ ČÁSTI TĚLA", "OSTATNI", "OST", "ULTRATHINK"]
+    section_keywords = ["TRUP", "HLAVA_KRK", "HLAVA A KRK", "HLAVA - KRK", "PHK", "LHK",
+                       "PRAVÁ HORNÍ KONČETINA", "LEVÁ HORNÍ KONČETINA",
+                       "DOLNÍ KONČETINA", "DOLNÍ KONČETINY", "DK", "DKK",
+                       "OSTATNÍ ČÁSTI TĚLA", "OSTATNÍ", "OSTATNI", "OST", "ULTRATHINK"]
 
     total_deleted = 0
     tables_processed = 0

@@ -1799,6 +1799,7 @@ def highlight_force_distribution_values(docx_path: str, measurement_data: Dict[s
                     new_para = cell.add_paragraph()
                     run = new_para.add_run(cell_text)
                     run.font.color.rgb = RGBColor(255, 0, 0)
+                    run.bold = True
             except (ValueError, TypeError):
                 pass  # Není číslo, skip
 
@@ -1824,11 +1825,153 @@ def highlight_force_distribution_values(docx_path: str, measurement_data: Dict[s
                     new_para = cell.add_paragraph()
                     run = new_para.add_run(cell_text)
                     run.font.color.rgb = RGBColor(255, 0, 0)
+                    run.bold = True
             except (ValueError, TypeError):
                 pass  # Není číslo, skip
 
     # Ulož změny (přepíše originální soubor)
     doc.save(docx_path)
+
+
+def highlight_nad_limitem_values(docx_path: str) -> None:
+    """
+    Červeně a tučně zvýrazní texty "nad limitem" nebo "Nad limitem" v tabulce s porovnáním limitů.
+
+    Tabulka má strukturu:
+    - 6 sloupců
+    - Sloupec 0: Pozice (profession_name)
+    - Sloupce 1-4: PHK Extenzory, PHK Flexory, LHK Extenzory, LHK Flexory (obsahují "Nad limitem" nebo "Pod limitem")
+    - Sloupec 5: Konečné hodnocení
+
+    Args:
+        docx_path: Cesta k vygenerovanému Word dokumentu
+
+    Returns:
+        None (upravuje dokument in-place)
+    """
+    from docx import Document
+    from docx.shared import RGBColor
+
+    # Otevři dokument
+    doc = Document(docx_path)
+
+    # Najdi správnou tabulku - tabulka s "Porovnání naměřených" a "Konečné hodnocení"
+    # Identifikace:
+    # - 6 sloupců
+    # - Obsahuje "Porovnání" nebo "Konečné hodnocení" v hlavičce
+    target_table = None
+    for table_idx, table in enumerate(doc.tables):
+        if len(table.rows) < 2:
+            continue
+
+        # Musí mít 6 sloupců
+        if len(table.columns) != 6:
+            continue
+
+        # Zkontroluj hlavičku (první dva řádky)
+        header_text = ""
+        for row_idx in range(min(2, len(table.rows))):
+            header_text += " ".join([cell.text for cell in table.rows[row_idx].cells]).lower()
+
+        # Musí obsahovat klíčová slova
+        if ("porovnání" in header_text or "porovnani" in header_text) and \
+           ("konečné hodnocení" in header_text or "konecne hodnoceni" in header_text):
+            target_table = table
+            break
+
+    if target_table is None:
+        return  # Tabulka nenalezena
+
+    # Sloupce 1-4 obsahují texty "Nad limitem" / "Pod limitem"
+    limit_columns = [1, 2, 3, 4]
+
+    # Projdi všechny řádky
+    for row_idx, row in enumerate(target_table.rows):
+        # Přeskoč hlavičkové řádky (první 2 řádky)
+        if row_idx < 2:
+            continue
+
+        # Projdi sloupce 1-4
+        for col_idx in limit_columns:
+            if col_idx >= len(row.cells):
+                continue
+
+            cell = row.cells[col_idx]
+            cell_text = cell.text.strip()
+
+            # Zkontroluj, jestli obsahuje "nad limitem" (case insensitive)
+            if "nad limitem" in cell_text.lower():
+                # Obarvi červeně a tučně
+
+                # Smaž všechny paragraphy
+                for paragraph in cell.paragraphs:
+                    p = paragraph._element
+                    p.getparent().remove(p)
+
+                # Vytvoř nový paragraph s červeným a tučným runem
+                new_para = cell.add_paragraph()
+                run = new_para.add_run(cell_text)
+                run.font.color.rgb = RGBColor(255, 0, 0)
+                run.bold = True
+
+    # Ulož změny (přepíše originální soubor)
+    doc.save(docx_path)
+
+
+def highlight_pp_typ_svalove_prace(docx_path: str) -> None:
+    """
+    Obarví background buněk s typem svalové práce v PP tabulkách.
+
+    - "Statická" → background #FDE9D9 (světle oranžová/béžová)
+    - "Dynamická" → background #95B3D7 (světle modrá)
+
+    Args:
+        docx_path: Cesta k vygenerovanému Word dokumentu
+
+    Returns:
+        None (upravuje dokument in-place)
+    """
+    from docx import Document
+
+    # Otevři dokument
+    doc = Document(docx_path)
+
+    colored_count = 0
+
+    # Projdi všechny tabulky
+    for table_idx, table in enumerate(doc.tables):
+        # Zkontroluj, jestli je to PP tabulka
+        if not is_pp_table(table):
+            continue
+
+        # Projdi všechny řádky (kromě hlavičky)
+        for row_idx, row in enumerate(table.rows):
+            # Přeskoč první řádek (hlavička)
+            if row_idx == 0:
+                continue
+
+            # Sloupec 1 = Typ svalové práce
+            if len(row.cells) < 2:
+                continue
+
+            cell = row.cells[1]
+            cell_text = cell.text.strip().lower()
+
+            # Přeskoč prázdné buňky a hlavičky
+            if not cell_text or "svalová práce" in cell_text or "muž" in cell_text or "výskyt" in cell_text:
+                continue
+
+            # Obarvi podle typu
+            if "statická" in cell_text or "staticka" in cell_text:
+                set_cell_background(cell, "FDE9D9")  # Světle oranžová/béžová
+                colored_count += 1
+            elif "dynamická" in cell_text or "dynamicka" in cell_text:
+                set_cell_background(cell, "95B3D7")  # Světle modrá
+                colored_count += 1
+
+    # Ulož změny
+    doc.save(docx_path)
+    print(f"  ✓ Obarveno {colored_count} buněk s typem svalové práce")
 
 
 def set_cell_background(cell, hex_color: str) -> None:
@@ -2000,9 +2143,9 @@ def highlight_pp_categories(
 
     # Barevné schéma (hex kódy bez #)
     COLORS = {
-        1: "90EE90",  # Světle zelená
-        2: "FFFF00",  # Žlutá
-        3: "FFC8C8"   # Světle červená
+        1: "68EE32",  # Zelená
+        2: "FFC000",  # Oranžová
+        3: "C00000"   # Tmavě červená
     }
 
     # Otevři dokument
@@ -2183,7 +2326,7 @@ def highlight_lsz_category(
     # Definuj barvy podle kategorie
     if category == 1:
         text_color = RGBColor(0, 0, 0)  # Černá
-        bg_color = "33ED33"  # Zelená
+        bg_color = "68EE32"  # Zelená
         desc = "černá/zelená (OK)"
     elif category == 2:
         text_color = RGBColor(0, 0, 0)  # Černá
@@ -2191,7 +2334,7 @@ def highlight_lsz_category(
         desc = "černá/oranžová (varování)"
     elif category == 3:
         text_color = RGBColor(255, 255, 255)  # Bílá
-        bg_color = "C00000"  # Tmavě červená
+        bg_color = "FF0000"  # Červená
         desc = "bílá/červená (kritické)"
     else:
         print(f"  ⚠ Neplatná hodnota kategorie: {category} (očekáváno 1, 2, nebo 3)")
@@ -2303,7 +2446,7 @@ def highlight_pp_category_number(
     # Definuj barvy podle kategorie (stejné jako u LSZ)
     if category == 1:
         text_color = RGBColor(0, 0, 0)  # Černá
-        bg_color = "33ED33"  # Zelená
+        bg_color = "68EE32"  # Zelená
         desc = "černá/zelená (OK)"
     elif category == 2:
         text_color = RGBColor(0, 0, 0)  # Černá
@@ -2311,7 +2454,7 @@ def highlight_pp_category_number(
         desc = "černá/oranžová (varování)"
     elif category == 3:
         text_color = RGBColor(255, 255, 255)  # Bílá
-        bg_color = "C00000"  # Tmavě červená
+        bg_color = "FF0000"  # Červená
         desc = "bílá/červená (kritické)"
     else:
         print(f"  ⚠ Neplatná hodnota PP kategorie: {category} (očekáváno 1, 2, nebo 3)")

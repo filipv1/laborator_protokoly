@@ -13,7 +13,8 @@
         "ico": "12345678",
         "shift_pattern": "2 směnný",
         "measurement_date": "10.10.2024",
-        "evidence_number": "001/2024"
+        "evidence_number_lsz": "001/2024",
+        "evidence_number_pp": "002/2024"
     },
     "section2_additional_data": {
         "set_standard": "120 ks/hodinu",
